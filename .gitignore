@@ -1,0 +1,34 @@
+# Python virtual environment
+.venv/
+
+# PyCharm IDE
+.idea/
+*.iml
+
+# SQLite database
+identifier.sqlite
+
+# Alembic and migrations
+alembic/versions/
+migrations/versions/
+
+# __pycache__ directories
+__pycache__/
+app/__pycache__/
+app/core/__pycache__/
+app/crud/__pycache__/
+app/db/__pycache__/
+app/logic/__pycache__/
+app/models/__pycache__/
+app/routers/__pycache__/
+app/service/__pycache__/
+bots/__pycache__/
+
+# FastAPI specific files and directories
+*.log
+*.lock
+*.pyc
+*.pyo
+*.egg-info
+dist/
+build/
