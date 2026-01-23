@@ -1,0 +1,129 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}控制面板 - SimEcon Admin{% endblock %}
+{% block breadcrumb %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">活跃玩家</h6>
+                <h2 class="fw-bold mb-0" id="stat-players">---</h2>
+                <small class="text-success"><i class="bi bi-arrow-up"></i> <span id="stat-players-trend">0%</span></small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">全服现金总额</h6>
+                <h2 class="fw-bold mb-0" id="stat-cash">---</h2>
+                <small class="text-muted">Avg: <span id="stat-cash-avg">0</span></small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-2">实时生产任务</h6>
+                <h2 class="fw-bold mb-0" id="stat-tasks">---</h2>
+                <div class="progress mt-2" style="height: 5px;">
+                    <div class="progress-bar" id="stat-tasks-load" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-danger text-white">
+            <div class="card-body">
+                <h6 class="text-white-50 mb-2">待处理异常</h6>
+                <h2 class="fw-bold mb-0" id="stat-alerts">0</h2>
+                <small>需要立即关注</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pt-3 fw-bold">全服经济运行曲线 (24h)</div>
+            <div class="card-body">
+                <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: #fdfdfd; border: 1px dashed #ccc;">
+                    <canvas id="economyChart"></canvas>
+                    <p class="text-muted" id="chart-loader">图表加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 pt-3 fw-bold">热点分析</div>
+            <div class="card-body">
+                <ul class="nav nav-tabs nav-fill mb-3" id="hotTab" role="tablist">
+                    <li class="nav-item"><button class="nav-link active py-1" data-bs-toggle="tab" data-bs-target="#hot-res">资源</button></li>
+                    <li class="nav-item"><button class="nav-link py-1" data-bs-toggle="tab" data-bs-target="#hot-players">玩家</button></li>
+                </ul>
+                <div class="tab-content" id="hotTabContent">
+                    <div class="tab-pane fade show active" id="hot-res">
+                        <div class="text-center py-5 text-muted">加载排名...</div>
+                    </div>
+                    <div class="tab-pane fade" id="hot-players">
+                        <div class="text-center py-5 text-muted">加载富豪榜...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between">
+                <span class="fw-bold text-danger"><i class="bi bi-exclamation-triangle"></i> 异常监控系统</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshAlerts()">刷新</button>
+            </div>
+            <div class="table-responsive p-3">
+                <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>级别</th>
+                            <th>时间</th>
+                            <th>类型</th>
+                            <th>描述</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alert-table-body">
+                        <tr><td colspan="5" class="text-center py-4 text-muted">暂无异常记录</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // 页面加载后执行
+    document.addEventListener('DOMContentLoaded', () => {
+        initDashboard();
+    });
+
+    async function initDashboard() {
+        // 后续在这里调用你的 API
+        console.log("Dashboard API 准备就绪，等待后端接口...");
+
+        // 模拟一个 API 请求示例
+        // const res = await fetch('/api/admin/stats');
+        // const data = await res.json();
+        // updateUI(data);
+    }
+
+    function refreshAlerts() {
+        // 局部刷新异常表逻辑
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,427 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}玩家管理 - SimEcon Admin{% endblock %}
+{% block breadcrumb %}Player Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center justify-content-between g-3">
+
+                    <div class="d-flex align-items-center gap-2 flex-grow-1 me-4" style="min-width: 300px;">
+                        <div class="input-group" style="max-width: 350px;">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="playerSearch" class="form-control border-start-0"
+                                   placeholder="UID / 用户名 / 关键词...">
+                        </div>
+                        <select class="form-select" id="filterStatus" style="width: 130px;">
+                            <option value="all">所有状态</option>
+                            <option value="active">活跃</option>
+                            <option value="frozen">冻结</option>
+                            <option value="banned">已封禁</option>
+                        </select>
+                        <button class="btn btn-primary px-3" onclick="loadPlayers()">
+                            <i class="bi bi-filter"></i> 筛选
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-2 mt-md-0">
+                        <button class="btn btn-success px-3"
+                                data-bs-toggle="modal"
+                                data-bs-target="#addPlayerModal"
+                        >
+                            <i class="bi bi-person-plus-fill"></i> 新增玩家
+                        </button>
+
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots"></i> 批量操作
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                <li><a class="dropdown-item" href="#" onclick="exportPlayerData()"><i
+                                        class="bi bi-download me-2"></i>导出 CSV</a></li>
+                                <li><a class="dropdown-item text-warning" href="#" onclick="resetAllEnergy()"><i
+                                        class="bi bi-lightning-charge me-2"></i>全服体力补满</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="emergencyMaintenance()"><i
+                                        class="bi bi-stop-circle me-2"></i>全服禁言/停服</a></li>
+                            </ul>
+                        </div>
+
+                        <button class="btn btn-light border" title="刷新列表" onclick="loadPlayers(currentPage)">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light" style="table-layout: fixed;width: 100%;">
+                <tr>
+                    <th class="ps-4">UID</th>
+                    <th>玩家名称</th>
+                    <th>等级</th>
+                    <th>现金资产</th>
+                    <th>注册时间</th>
+                    <th>状态</th>
+                    <th class="text-end pe-4">操作</th>
+                </tr>
+                </thead>
+                <tbody id="playerTableBody">
+                <tr>
+                    <td colspan="7" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-muted">加载玩家数据中...</p>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white border-0 py-3">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0" id="playerPagination">
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<div class="modal fade" id="addPlayerModal" tabindex="-1" aria-labelledby="addPlayerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addPlayerModalLabel"><i class="bi bi-person-plus"></i> 快速创建新玩家</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+            </div>
+            <form id="addPlayerForm" onsubmit="handleAddPlayer(event)">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">玩家名称 <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" placeholder="Unique username" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">电子邮箱</label>
+                            <input type="email" name="email" class="form-control" placeholder="example@mail.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">登录密码 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="password" name="password" id="addPlayerPassword" class="form-control" required>
+                            <button class="btn btn-outline-secondary" type="button" onclick="generatePassword()">
+                                <i class="bi bi-magic"></i> 随机
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr class="my-4 text-muted">
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-success">初始现金 (Cash)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="cash" class="form-control" value="10000" step="0.01">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-primary">初始等级 (Level)</label>
+                            <input type="number" name="level" class="form-control" value="1" min="1">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-primary">初始经验 (Experience)</label>
+                            <input type="number" name="experience" class="form-control" value="0" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">创建时间 (Created At)</label>
+                            <input type="datetime-local" name="created_at" id="addCreatedAt" class="form-control">
+                            <div class="form-text">不选则默认为当前服务器时间</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label small fw-bold">后台备注</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="记录创建原因..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="submit" class="btn btn-success px-5" data-bs-dismiss="modal">
+                        <i class="bi bi-check-lg"></i> 执行创建
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="playerDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">玩家详情调控: <span id="modalPlayerName" class="fw-bold">---</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <div class="col-md-6 border-end">
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">修改现金 (Current: <span
+                                    id="currentCash">0</span>)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="editCash"
+                                       placeholder="输入金额偏移量，如 -100 或 500">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">调整经验等级</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Lv</span>
+                                <input type="number" class="form-control" id="editLevel">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">账号状态</label>
+                            <select class="form-select" id="editStatus">
+                                <option value="active">正常</option>
+                                <option value="frozen">冻结</option>
+                                <option value="banned">永久封禁</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small text-muted mb-2">12地块概览 (Plot Status)</label>
+                        <div class="row g-2" id="playerPlotGrid">
+                            {% for i in range(12) %}
+                            <div class="col-3">
+                                <div class="ratio ratio-1x1 bg-light rounded d-flex align-items-center justify-content-center border"
+                                     style="font-size: 10px; color: #ccc;">
+                                    {{ i }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeletePlayer()">删除玩家</button>
+                <button type="button" class="btn btn-primary" onclick="savePlayerChanges()">保存更改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 接口占位函数
+    // 全局状态，方便其他函数调用
+    let currentPage = 1;
+
+    // 加载 玩家管理表格
+    async function loadPlayers(page = 1) {
+        currentPage = page;
+        const tableBody = document.getElementById('playerTableBody');
+        const pagination = document.getElementById('playerPagination');
+
+        // 1. 显示加载中状态
+        tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+
+        try {
+            // 2. 获取搜索和过滤参数
+            const search = document.getElementById('playerSearch').value;
+            const status = document.getElementById('filterStatus').value;
+
+            // 3. 发起请求 (这里对接你后续要写的 FastAPI 接口)
+            const response = await fetch(`/api/admin/players/?page=${page}`);
+
+            // 如果后端接口还没写好，这里会报错，我们用 mock 数据演示
+            if (!response.ok) throw new Error("API 未就绪");
+
+            const data = await response.json();
+            // 假设返回 { items: [], page: 1,total: 5, page_size: 100 }
+            renderTable(data.items);
+            const totalPages = Math.ceil(data.total / data.page_size);
+            renderPagination(totalPages, page);
+
+        } catch (error) {
+            console.error("加载失败:", error);
+            // 模拟数据展示 (正式开发时删除以下 Mock 代码)
+            const mockData = {
+                items: [
+                    {id: 1, name: "CEO_Gemini", level: 15, cash: 125000.50, created_at: "2026-01-01", status: "active"},
+                    {id: 2, name: "KFC_Manager", level: 8, cash: 4500.00, created_at: "2026-01-03", status: "frozen"}
+                ],
+                total_pages: 3
+            };
+            renderTable(mockData.items);
+
+            renderPagination(mockData.total_pages, page);
+        }
+    }
+
+    // 渲染表格行
+    function renderTable(players) {
+        const tableBody = document.getElementById('playerTableBody');
+        if (players.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-5">未找到匹配玩家</td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = players.map(p => `
+            <tr>
+                <td class="ps-4">#${p.id}</td>
+                <td class="fw-bold">${p.name}</td>
+                <td><span class="badge bg-info text-dark">Lv.${p.level}</span></td>
+                <td class="text-success text-end">$${p.cash.toLocaleString()}</td>
+                <td>${p.created_at}</td>
+                <td>
+                    <span class="badge ${p.status === 'active' ? 'bg-success' : 'bg-warning'}">
+                        ${p.status === 'active' ? '活跃' : '冻结'}
+                    </span>
+                </td>
+                <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-light border" onclick="showPlayerDetail(${p.id})">
+                        <i class="bi bi-pencil-square"></i> 管理
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    /**
+     * 动态渲染分页组件
+     * @param {number} totalPages 总页数
+     * @param {number} currentPage 当前页码
+     */
+    function renderPagination(totalPages, currentPage) {
+        const pagination = document.getElementById('playerPagination');
+        if (totalPages <= 1) {
+            pagination.innerHTML = ''; // 只有一页时隐藏分页
+            return;
+        }
+
+        let html = '';
+        const range = 2; // 当前页前后显示的页码数量
+
+        // --- 1. 上一页按钮 ---
+        html += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="if(${currentPage} > 1) loadPlayers(${currentPage - 1})">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>`;
+
+        // --- 2. 第一页与左侧省略号 ---
+        if (currentPage > range + 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadPlayers(1)">1</a></li>`;
+            if (currentPage > range + 2) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // --- 3. 中间数字页码 ---
+        for (let i = Math.max(1, currentPage - range); i <= Math.min(totalPages, currentPage + range); i++) {
+            html += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="${i === currentPage ? 'event.preventDefault()' : `loadPlayers(${i})`}">${i}</a>
+            </li>`;
+        }
+
+        // --- 4. 右侧省略号与最后一页 ---
+        if (currentPage < totalPages - range) {
+            if (currentPage < totalPages - range - 1) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadPlayers(${totalPages})">${totalPages}</a></li>`;
+        }
+
+        // --- 5. 下一页按钮 ---
+        html += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="if(${currentPage} < ${totalPages}) loadPlayers(${currentPage + 1})">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>`;
+
+        pagination.innerHTML = html;
+    }
+
+    async function showPlayerDetail(uid) {
+        console.log(`正在获取玩家 ${uid} 的详细地块和资产信息...`);
+        // TODO: 获取数据后填充模态框，并调用 new bootstrap.Modal(document.getElementById('playerDetailModal')).show();
+    }
+
+    function savePlayerChanges() {
+        // TODO: 发送 PATCH 请求到 /api/admin/players/{uid}
+    }
+
+    function confirmDeletePlayer() {
+        if (confirm("确定要删除该玩家吗？此操作不可逆，将清空所有地块和库存！")) {
+            // TODO: 发送 DELETE 请求
+        }
+    }
+
+    // 初始化加载
+    document.addEventListener('DOMContentLoaded', () => loadPlayers(1));
+</script>
+
+
+<script>
+
+    // 处理提交逻辑
+    async function handleAddPlayer(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch('/api/admin/players/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                showToast("玩家创建成功！", 'success');
+
+                // 重置表单
+                form.reset();
+
+                // 刷新列表
+                if (typeof loadPlayers === 'function') loadPlayers(1);
+            } else {
+                const err = await response.json();
+                // 这里的 err.detail 通常是 FastAPI 抛出的错误信息
+                const msg = Array.isArray(err.detail) ? err.detail[0].msg : err.detail;
+                showToast("创建失败: " + (msg || "未知错误"), 'error');
+            }
+        } catch (error) {
+            // 开发阶段方便调试
+            showToast("网络请求异常，请检查后端服务。", 'error');
+            console.error(error);
+        }
+    }
+</script>
+
+{% endblock %}

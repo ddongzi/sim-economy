@@ -1,0 +1,287 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}玩家管理 - SimEcon Admin{% endblock %}
+{% block breadcrumb %}财务审计{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 fw-bold text-primary">账务流水日志 (AccountingLog)</h6>
+            <div class="d-flex gap-2">
+                <select id="filter-action" class="form-select form-select-sm" style="width: 150px;">
+                    <option value="">所有业务类型</option>
+                    <option value="BUY_ASSET">资产购买</option>
+                    <option value="PRODUCE_COST">生产消耗</option>
+                    <option value="REWARD">系统奖励</option>
+                </select>
+                <input type="text" class="form-control form-control-sm" placeholder="搜索玩家ID...">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="accounting-table">
+                    <thead class="table-light">
+                    <tr>
+                        <th>时间</th>
+                        <th>玩家</th>
+                        <th>类型</th>
+                        <th class="text-end">变动金额</th>
+                        <th class="text-center">变动前</th>
+                        <th class="text-center">变动后</th>
+                        <th>关联单据</th>
+                        <th class="text-center">状态</th>
+                    </tr>
+                    </thead>
+                    <tbody id="accounting-log-tbody">
+                    <tr>
+                        <td class="small">2026-01-19 14:20:01</td>
+                        <td><span class="badge bg-secondary">ID: 1001</span> 张三</td>
+                        <td><span class="badge rounded-pill bg-info text-dark">PRODUCE_COST</span></td>
+                        <td class="text-end fw-bold text-danger">- ¥ 50.00</td>
+                        <td class="text-center text-muted">1,200.00</td>
+                        <td class="text-center fw-bold">1,150.00</td>
+                        <td><a href="#" class="btn btn-link btn-sm p-0">Task #882</a></td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted small">
+                    显示第 <span id="current-range">1-10</span> 条，共 <span id="total-count">0</span> 条
+                </div>
+
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0" id="pagination-list">
+                        <li class="page-item disabled"><a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a></li>
+                    </ul>
+                </nav>
+
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-muted text-nowrap">每页显示</span>
+                    <select id="page-size" class="form-select form-select-sm" style="width: 70px;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+
+<script>
+    const TransactionTypeConfig = {
+        // --- 生产与建设 ---
+        1: {label: '生产消耗', class: 'bg-danger-subtle text-danger border border-danger-subtle', icon: 'bi-hammer'},
+        6: {
+            label: '建筑成本消耗',
+            class: 'bg-warning-subtle text-warning-emphasis border border-warning-subtle',
+            icon: 'bi-building-gear'
+        },
+        8: {label: '政务入账建造费用', class: 'bg-primary text-white shadow-sm', icon: 'bi-bank'}, // 系统收入，深色更稳重
+
+        // --- 交易所相关 ---
+        2: {
+            label: '交易所出售所得',
+            class: 'bg-success-subtle text-success-emphasis border border-success-subtle',
+            icon: 'bi-cash-coin'
+        },
+        3: {label: '交易所购买支出', class: 'bg-danger-subtle text-danger', icon: 'bi-cart-dash'},
+        5: {
+            label: '成交差价退回',
+            class: 'bg-info-subtle text-info-emphasis border border-info-subtle',
+            icon: 'bi-arrow-left-right'
+        },
+        7: {label: '订单异常退回', class: 'bg-secondary-subtle text-secondary', icon: 'bi-shield-exclamation'},
+
+// --- 奖励与调整 ---
+        10: {label: '任务奖励', class: 'bg-primary-subtle text-primary border border-primary-subtle', icon: 'bi-gift'},
+        11: {label: '系统后台调整', class: 'bg-dark text-light', icon: 'bi-cpu-fill'},
+
+// --- 新用户初始资金相关 ---
+        12: {
+            label: '新用户初始资金',
+            class: 'bg-success-subtle text-success border border-success-subtle',
+            icon: 'bi-person-plus-fill'
+        },
+        13: {
+            label: '新用户初始资金支出',
+            class: 'bg-danger-subtle text-danger border border-danger-subtle',
+            icon: 'bi-cash-stack'
+        },
+
+        14: {
+            label: '合同支出',
+            // 支出通常使用代表警告或负向的颜色，例如 danger 或 warning
+            class: 'bg-danger-subtle text-danger border border-danger-subtle',
+            // 合同或文档相关的图标
+            icon: 'bi-file-earmark-minus-fill'
+        },
+        15: {
+            label: '合同收入',
+            // 收入使用代表成功或正向的颜色，例如 success 或 info
+            class: 'bg-success-subtle text-success border border-success-subtle',
+            // 合同或文档相关的图标
+            icon: 'bi-file-earmark-plus-fill'
+        }
+    };
+
+
+    function renderAccountingLogs(logs) {
+        const tbody = document.getElementById('accounting-log-tbody');
+
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">暂无账务流水记录</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = logs.map(log => {
+            const config = TransactionTypeConfig[log.action_type] || {
+                label: '未知',
+                class: 'bg-secondary',
+                icon: 'bi-question'
+            };
+            const isPositive = log.change_amount > 0;
+            const amountDisplay = isPositive ? `+${log.change_amount.toFixed(3)}` : log.change_amount.toFixed(3);
+            const amountClass = isPositive ? 'text-success' : 'text-danger';
+
+            return `
+            <tr class="align-middle">
+                <td class="small text-muted">
+                    ${new Date(log.created_at).toLocaleString()}
+                </td>
+                <td class="small text-muted">
+                    ${log.player_id}
+                </td>
+                <td>
+                    <span class="badge ${config.class} border shadow-sm px-2">
+                        <i class="bi ${config.icon} me-1"></i>${config.label}
+                    </span>
+                </td>
+                <td class="text-end fw-bold ${amountClass}">
+                    ${amountDisplay}
+                </td>
+                <td class="text-end">
+                    <span class="text-muted fw-light">${log.before_balance.toLocaleString()}</span>
+                </td>
+
+                <td class="text-end fw-bold">
+                    ${log.after_balance.toLocaleString()}
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-light text-dark border fw-normal"># ${log.ref_id}</span>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-secondary border-0" onclick="verifyLine(${log.id})">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        }).join('');
+    }
+
+</script>
+<script>
+
+    // 加载数据的核心函数
+    async function fetchAccountingLogs() {
+        const actionType = document.getElementById('filter-action').value;
+        const pageSize = document.getElementById('page-size').value;
+
+        // 构造请求 URL (带上分页参数)
+        const url = `/api/admin/accounting/?page=${currentPage}&size=${pageSize}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json(); // 假设格式: { items: [], total: 120， page, size }
+
+            renderAccountingLogs(data.items);
+            renderPagination(data.total);
+        } catch (err) {
+            console.error("加载日志失败", err);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await fetchAccountingLogs();
+    })
+</script>
+<script>
+    let currentPage = 1;
+    let pageSize = 10;
+
+
+    // 渲染分页按钮
+    function renderPagination(total) {
+        const totalPages = Math.ceil(total / pageSize);
+        const paginationList = document.getElementById('pagination-list');
+        let html = '';
+
+        // 上一页
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="changePage(${currentPage - 1})">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+             </li>`;
+
+        // 简单页码逻辑 (如果总数太多，建议只显示当前页前后的几个)
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="changePage(${i})">${i}</a>
+                     </li>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // 下一页
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="changePage(${currentPage + 1})">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+             </li>`;
+
+        paginationList.innerHTML = html;
+
+        // 更新左侧统计文字
+        document.getElementById('total-count').innerText = total;
+        const start = (currentPage - 1) * pageSize + 1;
+        const end = Math.min(currentPage * pageSize, total);
+        document.getElementById('current-range').innerText = `${start}-${end}`;
+    }
+
+    function changePage(page) {
+        currentPage = page;
+        fetchAccountingLogs();
+    }
+
+    // 监听每页条数变化
+    document.getElementById('page-size').onchange = () => {
+        currentPage = 1;
+        fetchAccountingLogs();
+    };
+
+    // 监听搜索和过滤
+    document.getElementById('filter-action').onchange = () => {
+        currentPage = 1;
+        fetchAccountingLogs();
+    };
+
+</script>
+{% endblock %}

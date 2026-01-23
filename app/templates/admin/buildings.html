@@ -1,0 +1,380 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}建筑系统管理 - SimEcon Admin{% endblock %}
+{% block breadcrumb %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div class="btn-toolbar gap-2">
+                <button class="btn btn-light border" onclick="exportData()">
+                    <i class="bi bi-download me-1"></i> 导出配置
+                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMetaModal">
+                    <i class="bi bi-plus-lg me-1"></i> 新增建筑
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-4 p-1 bg-white rounded shadow-sm" id="adminBuildingTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" id="meta-tab" data-bs-toggle="tab" data-bs-target="#meta-content">
+                <i class="bi bi-map me-2"></i>建筑 (元数据)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="instance-tab" data-bs-toggle="tab" data-bs-target="#instance-content">
+                <i class="bi bi-gpu-card me-2"></i>全服实例监控
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="meta-content">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small">共 <b id="bpCount">0</b> 种建筑类型</span>
+                        <div class="input-group input-group-sm w-25">
+                            <input type="text" class="form-control" placeholder="搜索建筑...">
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th style="width: 15%">原型ID</th>
+                            <th style="width: 20%">名称/类别</th>
+                            <th style="width: 15%">基础造价</th>
+                            <th style="width: 15%" class="text-end">管理操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="metaList">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="instance-content">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <select class="form-select form-select-sm">
+                                <option>批量操作</option>
+                                <option>强制停工</option>
+                                <option>立即完成</option>
+                                <option>回收建筑</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-sm btn-dark">应用</button>
+                        </div>
+                        <div class="col text-end">
+                            <span class="badge bg-success-subtle text-success border">实时数据已同步</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th><input type="checkbox" class="form-check-input"></th>
+                            <th>玩家 & ID</th>
+                            <th>建筑详情</th>
+                            <th>等级</th>
+                            <th>状态/任务</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="playerBuildingInstances">
+                        <tr>
+                            <td><input type="checkbox" class="form-check-input"></td>
+                            <td>
+                                <div class="fw-bold">Player_9527</div>
+                                <small class="text-muted">UID: 10045</small>
+                            </td>
+                            <td>钢铁冶炼厂</td>
+                            <td><span class="badge rounded-pill bg-light text-dark border">Lv. 12</span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 me-2" style="width: 120px;">
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                                 style="width: 65%"></div>
+                                        </div>
+                                    </div>
+                                    <small class="text-info fw-bold">升级中</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light border dropdown-toggle"
+                                            data-bs-toggle="dropdown">操作
+                                    </button>
+                                    <ul class="dropdown-menu shadow">
+                                        <li><a class="dropdown-item" href="#"><i
+                                                class="bi bi-lightning-fill text-warning me-2"></i>强制完成</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增建筑 -->
+<div class="modal fade" id="addMetaModal" tabindex="-1" aria-labelledby="addMetaModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addMetaModalLabel">
+                    <i class="bi bi-building-add me-2"></i>设计新建筑
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+            </div>
+            <form id="addMetaForm">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label for="bp_id" class="form-label small fw-bold">唯一识别码 (ID)</label>
+                        <input type="text" class="form-control" id="bp_id" name="id" placeholder="例如: steel_mill_v1"
+                               required>
+                        <div class="form-text">创建后不可更改，建议使用小写字母和下划线。</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bp_name" class="form-label small fw-bold">建筑名称</label>
+                        <input type="text" class="form-control" id="bp_name" name="name"
+                               placeholder="例如: 大型钢铁冶炼厂" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="industry_category" class="form-label small fw-bold">产业类别</label>
+                        <select class="form-select" id="industry_category" name="industry_id" required>
+                        </select>
+
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="building_cost" class="form-label small fw-bold">造价 ($)</label>
+                            <input type="number" class="form-control" id="building_cost" name="building_cost" value="0"
+                                   step="0.01" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="maintenance_cost" class="form-label small fw-bold">使用费用 ($)</label>
+                            <input type="number" class="form-control" id="maintenance_cost" name="maintenance_cost"
+                                   value="0"
+                                   step="0.01" required>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="submit" class="btn btn-primary px-4" data-bs-dismiss="modal">发布</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadMetas() {
+        const tbody = document.getElementById('metaList');
+        try {
+            const response = await fetch('/api/admin/buildings/metas');
+            const metas = await response.json();
+            tbody.innerHTML = '';
+            metas.forEach(bp => {
+                // 这里假设后端在 bp 对象中统计了 levels 数量
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><code>${bp.id}</code></td>
+                    <td>
+                        <div class="fw-bold">${bp.name}</div>
+                        <small class="text-muted">行业：${bp.industry_id}</small>
+                    </td>
+                    <td>
+                        <div class="fw-bold">建造费用 $${bp.building_cost}</div>
+                        <small class="text-muted">使用费用：$${bp.maintenance_cost} /秒</small>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editBuildingMetaModal"
+                                >
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">加载数据失败</td></tr>';
+            console.error(err)
+        }
+    }
+
+    // 页面加载时自动执行
+    document.addEventListener('DOMContentLoaded', () => {
+
+        loadMetas()
+    });
+</script>
+
+<!-- 新增building modal-->
+<script>
+
+    document.getElementById('addMetaModal').addEventListener('show.bs.modal', async function (event) {
+            console.log("add meta modal!")
+            const res = await fetch("/api/gamedata/");
+            const data = await res.json();
+
+            document.querySelector("#industry_category").innerHTML = data.industries.map(industry => {
+                return `<option value="${industry.id}">${industry.name}</option>`;
+            }).join("");
+
+        }
+    )
+    // 监听新增原型表单提交
+    document.getElementById('addMetaForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // 1. 封装数据 (对应 BuildingMeta 模型)
+        const formData = new FormData(e.target);
+        const payload = Object.fromEntries(formData.entries());
+
+        // 将基础造价转为浮点数
+        payload.base_cost = parseFloat(payload.base_cost);
+
+        try {
+            const response = await fetch('/api/admin/buildings/metas', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                // 2. 成功处理
+                showToast("发布成功！");
+            } else {
+                const error = await response.json();
+                showToast("发布失败: " + (error.detail || "未知错误"));
+            }
+        } catch (err) {
+            console.error("提交异常:", err);
+            showToast("无法连接到服务器");
+        }
+    });
+
+</script>
+
+<script>
+
+    /**
+     * 渲染建筑列表
+     * @param {Array} data 后端返回的建筑实例数组
+     */
+    function renderBuildingTable(data) {
+        const tbody = document.getElementById('playerBuildingInstances');
+        tbody.innerHTML = ''; // 清空现有内容
+
+        data.forEach(item => {
+            // 根据状态逻辑处理进度条颜色和文字
+            let statusText = '正常';
+            let progressClass = 'bg-success';
+            let isAnimated = '';
+
+            if (item.status === 'upgrading') {
+                statusText = '升级中';
+                progressClass = 'bg-info';
+                isAnimated = 'progress-bar-striped progress-bar-animated';
+            } else if (item.status === 'working') {
+                statusText = '生产中';
+                progressClass = 'bg-primary';
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td><input type="checkbox" class="form-check-input" value="${item.id}"></td>
+            <td>
+                <div class="fw-bold">${item.username}</div>
+                <small class="text-muted">UID: ${item.task.player_id}</small>
+            </td>
+            <td>${item.building_meta.name}</td>
+            <td><span class="badge rounded-pill bg-light text-dark border">Lv. ${item.level}</span></td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1 me-2" style="width: 120px;">
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${isAnimated} ${progressClass}"
+                                 style="width: ${calculateProgress(item.task.start_time, item.task.end_time)}%"></div>
+                        </div>
+                    </div>
+                    <small class="${item.status === 'upgrading' ? 'text-info' : 'text-muted'} fw-bold">${statusText}</small>
+                </div>
+            </td>
+            <td>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border dropdown-toggle"
+                            data-bs-toggle="dropdown">操作
+                    </button>
+                    <ul class="dropdown-menu shadow">
+                        <li>
+                            <a class="dropdown-item" href="javascript:void(0)" onclick="handleComplete(${item.id})">
+                                <i class="bi bi-lightning-fill text-warning me-2"></i>强制完成
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#">销毁</a></li>
+                    </ul>
+                </div>
+            </td>
+        `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function fetchBuildingData() {
+        try {
+            const response = await fetch('/api/buildings');
+            if (!response.ok) throw new Error('网络请求失败');
+
+            const result = response.ok ? await response.json() : [];
+            // 假设后端返回结构是 { status: "success", data: [...] }
+            console.log(result)
+            renderBuildingTable(result);
+
+        } catch (error) {
+            console.error('加载建筑数据失败:', error);
+            // 这里可以添加 UI 错误提示
+        }
+    }
+
+    // 页面加载时执行
+    document.addEventListener('DOMContentLoaded', fetchBuildingData);
+
+    // 强制完成的逻辑示例
+    function handleComplete(instanceId) {
+        if (confirm(`确认消耗钻石强制完成建筑 ID: ${instanceId} 吗？`)) {
+            // 执行你的后台逻辑...
+            console.log("执行强制完成:", instanceId);
+        }
+    }
+
+</script>
+
+
+{% endblock %}

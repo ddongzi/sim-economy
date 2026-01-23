@@ -1,0 +1,247 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* 简单的气泡样式提升体验 */
+    .msg-box {
+        margin-bottom: 10px;
+        max-width: 85%;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 0.95rem;
+    }
+
+    .msg-received {
+        background: #fff;
+        border: 1px solid #dee2e6;
+    }
+
+    .msg-sent {
+        background: #cfe2ff;
+        margin-left: auto;
+        border: 1px solid #b6d4fe;
+    }
+
+    .msg-private {
+        border-left: 4px solid #ffc107;
+    }
+
+    /* 私聊消息高亮黄边 */
+    .msg-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 2px;
+    }
+</style>
+<div class="container-fluid py-3 ">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-dark text-white fw-bold small">通讯中心</div>
+                <div class="list-group list-group-flush" id="chat-targets">
+                    <button class="list-group-item list-group-item-action active d-flex justify-content-between align-items-center"
+                            onclick="gameChat.setTarget('global', this)">
+                        🌐 全局频道
+                        <!-- 红点占位：初始状态通过 d-none 隐藏 -->
+                        <span class="badge bg-danger border border-light rounded-circle p-1 d-none" id="unread-Global">
+                    </span>
+                    </button>
+
+                    <div id="online-users"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold" id="current-target-display">正在发送到: 全局大厅</span>
+                    <span class="badge bg-success" id="connection-status">已连接</span>
+                </div>
+
+                <div class="card-body p-0">
+                    <div id="chat-window" class="p-3 bg-light overflow-auto" style="height: 450px;">
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white border-top-0">
+                    <div class="input-group">
+                        <input type="text" id="chat-input" class="form-control" placeholder="输入消息..."
+                               autocomplete="off">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal"
+                                data-bs-target="#contractModal">
+                            📜
+                        </button>
+                        <button class="btn btn-primary px-4" onclick="gameChat.send()">发送</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="contractModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="card bg-dark text-white border-primary shadow">
+            <div class="card-header fw-bold">📜 发起现货合同</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="small text-secondary">资源类型</label>
+                    <select id="item-type" class="form-select bg-secondary text-white border-0">
+                        <option value="钢铁">钢铁</option>
+                        <option value="粮食">粮食</option>
+                        <option value="石油">石油</option>
+                    </select>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6"><input type="number" id="item-qty" class="form-control" placeholder="数量"></div>
+                    <div class="col-6"><input type="number" id="item-price" class="form-control" placeholder="单价">
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-sm btn-primary" onclick="gameChat.sendContract()">发送合同</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+    class ChatService {
+        constructor() {
+            this.target = "global"; // 默认发送目标
+            this.chatWindow = document.getElementById('chat-window');
+            this.input = document.getElementById('chat-input');
+            this.bindEvents();
+
+            this.type = "chat"
+        }
+
+        // 切换频道的方法：点击左侧列表时触发
+        setTarget(name, element) {
+            this.target = name;
+
+            // UI 切换高亮状态
+            document.querySelectorAll('#chat-targets .list-group-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            document.querySelector("#current-target-display").innerText = `正在发送到：${name}`
+
+            this.chatWindow.innerHTML = '';
+            // 隐藏红点（比如点击该用户后）
+            document.getElementById(`unread-${name}`).classList.add('d-none');
+        }
+
+        send() {
+            const text = this.input.value.trim();
+            if (text) {
+                const payload = {
+                    to: this.target,
+                    from: getUserInfo().name,
+                    message: text
+                };
+                const subtype = this.target === 'global' ? 'global' : 'private';
+                gameWS.send(this.type, subtype, JSON.stringify(payload));
+                this.input.value = '';
+            }
+        }
+
+        // {
+        //     type: type,
+        //     sub_type: subType,
+        //     data: payload,
+        //     timestamp: Date.now()
+        // }
+        handleIncomingMessage(msg) {
+            // 1. 处理系统发送的在线列表更新
+            const userInfo = getUserInfo()
+            const sub_type = msg.sub_type;
+            const data = msg.data
+
+            // 2. 确定消息应该归属于哪个“频道/槽位” (chatKey)
+            // 如果是群聊，归属于 'Global'；如果是私聊，归属于“对方的名字”
+            const chatKey = sub_type === 'global'
+                ? 'global'
+                : (data.from === userInfo.name ? data.to : data.from);
+
+            // 4. UI 渲染逻辑分流
+            console.log("", this.target, chatKey)
+            if (this.target === chatKey) {
+                // 场景 A：玩家正在看着这个频道 -> 直接把消息刷到屏幕上
+                const isMine = data.from === userInfo.name;
+                this.appendMessage(data, isMine);
+            } else {
+                // 场景 B：玩家在看别的频道 -> 在侧边栏对应的名字上显示未读红点/数字
+                document.getElementById(`unread-${chatKey}`).classList.remove('d-none');
+            }
+        }
+
+        appendMessage(data, isMine) {
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+            const isPrivate = data.type === 'private';
+
+            const html = `
+            <div class="d-flex flex-column ${isMine ? 'align-items-end' : 'align-items-start'} mb-2">
+                <div class="msg-meta">${data.from} • ${time} ${isPrivate ? '<span class="text-warning">[私聊]</span>' : ''}</div>
+                <div class="msg-box ${isMine ? 'msg-sent' : 'msg-received'} ${isPrivate ? 'msg-private' : ''}">
+                    ${this.escapeHtml(data.message)}
+                </div>
+            </div>
+        `;
+            this.chatWindow.insertAdjacentHTML('beforeend', html);
+            this.chatWindow.scrollTop = this.chatWindow.scrollHeight;
+        }
+
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        bindEvents() {
+            this.input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.send();
+            });
+        }
+
+
+    }
+
+    function renderUserList() {
+        const users = JSON.parse(localStorage.getItem('user_list'))
+        console.log(users)
+        const container = document.getElementById('online-users');
+        container.innerHTML = users
+            .filter(u => u !== getUserInfo().name)
+            .map(u => `
+                <button class="list-group-item list-group-item-action small py-2" onclick="gameChat.setTarget('${u}', this)">
+                    👤 ${u}
+                <!-- 红点占位：初始状态通过 d-none 隐藏 -->
+                    <span class="badge bg-danger border border-light rounded-circle p-1 d-none" id="unread-${u}">
+                        <span class="visually-hidden">New message</span>
+                    </span>
+                </button>
+            `).join('');
+    }
+
+    let gameChat;
+    document.addEventListener("DOMContentLoaded", async () => {
+        // 初始化
+        console.log("init chat ml")
+        console.log(gameWS)
+        const userInfo = getUserInfo()
+        localStorage.removeItem("user_list")
+        gameChat = new ChatService();
+        gameWS.subscribe(gameChat.type, (data) => gameChat.handleIncomingMessage(data))
+        gameWS.subscribe("user_list_update", (msg) => {
+            localStorage.setItem("user_list", JSON.stringify(msg.data))
+            renderUserList();
+        })
+    })
+</script>
+
+{% endblock %}

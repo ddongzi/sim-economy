@@ -1,0 +1,474 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <ul class="nav nav-tabs card-header-tabs border-bottom-0" id="contractTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active fw-bold" id="received-tab" data-bs-toggle="tab"
+                            data-bs-target="#received-pane">
+                        📩 收到的报价 <span class="badge bg-danger ms-1" id="count-received">0</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold text-secondary" id="sent-tab" data-bs-toggle="tab"
+                            data-bs-target="#sent-pane">
+                        📤 发出的合同
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold text-secondary" id="recurring-tab" data-bs-toggle="tab"
+                            data-bs-target="#recurring-pane">
+                        ⏳ 长期协议 (期货)
+                    </button>
+                </li>
+            </ul>
+
+            <div class="ms-auto">
+                <button class="btn btn-primary btn-sm fw-bold shadow-sm" data-bs-toggle="modal"
+                        data-bs-target="#newContractModal">
+                    <i class="bi bi-plus-lg me-1"></i> 发起新合同
+                </button>
+                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="ContractManager.fetchAll()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="contractTabsContent">
+            <div class="tab-pane fade show active" id="received-pane" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="table-received">
+                        <thead class="table-light small">
+                        <tr>
+                            <th>资源</th>
+                            <th>发件方</th>
+                            <th>品质</th>
+                            <th>数量</th>
+                            <th>单价</th>
+                            <th>总额</th>
+                            <th class="text-end">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="sent-pane" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="table-sent">
+                        <thead class="table-light small">
+                        <tr>
+                            <th>资源</th>
+                            <th>接收方</th>
+                            <th>品质</th>
+                            <th>数量</th>
+                            <th>单价</th>
+                            <th>总额</th>
+                            <th class="text-end">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="recurring-pane" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="table-recurring">
+                        <thead class="table-light small">
+                        <tr>
+                            <th>资源</th>
+                            <th>对方公司</th>
+                            <th>品质</th>
+                            <th>每日供应量</th>
+                            <th>协议单价</th>
+                            <th>状态</th>
+                            <th class="text-end">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="newContractModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">📦 发起新商业合同</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="contractForm">
+                <div class="modal-body">
+                    <!-- 接收方 -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">接收方公司 ID</label>
+                        <input type="number" name="receiver_id" class="form-control"
+                               placeholder="输入公司唯一数字 ID..." required>
+                    </div>
+
+                    <!-- 资源与品质 -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-8">
+                            <label class="form-label small fw-bold">资源名称</label>
+                            <select class="form-select" name="resource_id" id="contract-resource" required>
+                                <option value="" selected disabled>加载中...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 数量与单价 -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">数量</label>
+                            <input type="number" name="quantity" id="contract-qty" class="form-control" placeholder="0"
+                                   required min="1">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">单价 ($)</label>
+                            <input type="number" name="price_per_unit" id="contract-price" class="form-control"
+                                   step="0.001" required min="0.001">
+                        </div>
+                    </div>
+
+                    <!-- 总计显示 (新增) -->
+                    <div class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center">
+                        <span class="small fw-bold text-muted">合同预计总额:</span>
+                        <div>
+                            <span class="h6 mb-0 text-primary" id="contract-total">$0.00</span>
+                            <!-- 隐藏域：用于跟随表单提交 -->
+                            <input type="hidden" name="total_amount" id="contract-total-input" value="0">
+                        </div>
+                    </div>
+
+
+                    <!-- 过期时间 -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">报价有效期 (过期时间)</label>
+                        <input type="datetime-local" name="expires_at" id="addExpireAt" class="form-control" required>
+                    </div>
+
+                    <!-- 合同类型切换 -->
+                    <div class="card bg-light border-0">
+                        <div class="card-body py-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_recurring" id="recurringCheck">
+                                <label class="form-check-label fw-bold small" for="recurringCheck">
+                                    设置为定期合同 (期货)
+                                </label>
+                            </div>
+                            <div id="recurringInfo" class="small text-muted mt-1 d-none">
+                                <i class="bi bi-info-circle"></i> 开启后，系统将在每天相同时间自动尝试执行此交易。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">发送合同报价</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+
+    document.addEventListener("gameInitDone", () => {
+        const modalEl = document.getElementById('newContractModal');
+        const form = document.getElementById('contractForm');
+        const resourceSelect = document.querySelector("#contract-resource");
+        const recurringCheck = document.querySelector("#recurringCheck");
+        const recurringInfo = document.querySelector("#recurringInfo");
+        console.log("1111", window.gameData)
+
+        // 1. 当模态框显示时：填充资源下拉框 + 设置默认时间
+        modalEl.addEventListener('show.bs.modal', () => {
+            // 渲染资源
+            console.log(window.gameData.resources)
+            if (window.gameData?.resources) {
+                resourceSelect.innerHTML = window.gameData.resources.map(res =>
+                    `<option value="${res.id}">${res.name}</option>`
+                ).join('');
+            }
+
+            // 设置默认过期时间为 24 小时后
+            const tomorrow = new Date();
+            tomorrow.setHours(tomorrow.getHours() + 24);
+            // 格式化为 datetime-local 支持的字符串 YYYY-MM-DDTHH:MM
+            document.getElementById('addExpireAt').value = tomorrow.toISOString().slice(0, 16);
+        });
+
+        // 2. 监听总价计算
+        const qtyInput = document.getElementById('contract-qty');
+        const priceInput = document.getElementById('contract-price');
+        const totalDisplay = document.getElementById('contract-total');
+        const totalInput = document.getElementById("contract-total-input");
+
+        [qtyInput, priceInput].forEach(input => {
+            input.addEventListener('input', () => {
+                const total = (qtyInput.value || 0) * (priceInput.value || 0);
+                totalDisplay.innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                totalInput.value = total;
+            });
+        });
+
+        // 3. 切换定期合同 UI
+        recurringCheck.addEventListener('change', (e) => {
+            recurringInfo.classList.toggle('d-none', !e.target.checked);
+        });
+
+        // 4. 表单提交逻辑
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const payload = Object.fromEntries(formData.entries());
+            console.log("payload", payload)
+            // 显式转换类型
+            payload.receiver_id = parseInt(payload.receiver_id);
+            payload.resource_id = parseInt(payload.resource_id);
+            payload.quantity = parseInt(payload.quantity);
+            payload.price_per_unit = parseFloat(payload.price_per_unit);
+            payload.total_amount = parseFloat(payload.total_amount)
+            try {
+                // 示例 API 请求
+                const response = await fetch('/api/contract/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alert("合同已成功发送！");
+                    bootstrap.Modal.getInstance(modalEl).hide();
+                    form.reset();
+                } else {
+                    const err = await response.json();
+                    alert("发送失败: " + err.detail);
+                }
+            } catch (error) {
+                console.error("提交出错:", error);
+            }
+        });
+    });
+
+</script>
+<script>
+    /**
+     * 模拟根据视图类型加载数据
+     */
+    function switchView(type) {
+        const menuItems = document.querySelectorAll('#contract-menu .list-group-item');
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', function () {
+                // 1. 移除所有项的 active 类
+                menuItems.forEach(i => i.classList.remove('active'));
+
+                // 2. 为当前点击项添加 active 类
+                this.classList.add('active');
+
+                // 3. 获取业务类型并执行加载逻辑
+                const viewType = this.getAttribute('data-view');
+                console.log(`切换到视图: ${viewType}`);
+
+                switchView(viewType);
+            });
+        });
+        // 这里调用你的 FastAPI 接口
+        // 例如: if (type === 'received') fetchReceivedContracts();
+        if (type === 'received') {
+            console.log("加载收到的合同数据...");
+        } else if (type === 'sent') {
+            console.log("加载已发送的合同数据...");
+        }
+    }
+
+</script>
+
+<script>
+    const ContractHandler = {
+        // 对应 sub_type: "contract_new"
+        handleNew(data) {
+            console.log("处理新合同提醒:", data);
+            // 更新合同列表的小红点
+            const badge = document.getElementById('count-received');
+            badge.innerText = parseInt(badge.innerText) + 1;
+            // 弹出全局通知（Toast）
+            Toast.show(`收到来自 ${data.from} 的新合约报价`);
+        },
+
+        // 对应 sub_type: "contract_update"
+        handleUpdate(data) {
+            console.log("合同状态更新:", data);
+            ContractManager.fetchAll(); // 刷新表格
+        }
+    };
+    const ContractManager = {
+        // 实际应通过 window.player.id 等全局状态获取，确保是 Number 类型
+        currentUserId: 1,
+
+        // 状态映射，对应你之前在 CSS 中定义的样式
+        icons: {'电力': 'bi-lightning-charge', '水': 'bi-droplet', '原油': 'bi-fuel-pump'},
+        colors: {'电力': 'warning', '水': 'primary', '原油': 'dark'},
+
+        async fetchAll() {
+            try {
+                const resp = await fetch("/api/player/me");
+                const player = await resp.json();
+                this.currentUserId = player.id;
+                const response = await fetch('/api/contract/');
+                if (!response.ok) throw new Error("获取数据失败");
+                const data = await response.json();
+
+                // 修正：后端返回的 ID 通常是 int，确保比较逻辑一致
+                const uid = Number(this.currentUserId);
+
+                // 数据过滤逻辑
+                const received = data.filter(c => c.receiver_id === uid && c.status === 'pending');
+                const sent = data.filter(c => c.sender_id === uid && c.status === 'pending');
+                // 期货：假设 status 为 'signed' 且 is_recurring 为 true
+                const recurring = data.filter(c => c.is_recurring === true && (c.status === 'signed' || c.status === 'active'));
+                console.log(data, received, sent)
+                // 执行渲染
+                this.renderTable('table-received', received, 'received');
+                this.renderTable('table-sent', sent, 'sent');
+                this.renderTable('table-recurring', recurring, 'recurring');
+
+                // 更新导航条上的红点计数
+                this.updateBadges({
+                    'received': received.length,
+                    'recurring': recurring.length
+                });
+
+            } catch (e) {
+                console.error("ContractManager Error:", e);
+                // 可以在 UI 上显示错误提示
+            }
+        },
+
+        // 生成资源列的模板（包含图标和名称）
+        getItemTemplate(c) {
+            // 假设后端返回了 resource_name，如果没有，需要根据 ID 映射
+           const resource = window.gameData.resources.filter(r => r.id === c.resource_id)[0];
+            const name = resource.name|| "未知资源";
+            const icon = this.icons[name] || 'bi-box-seam';
+            const color = this.colors[name] || 'secondary';
+            return `
+            <div class="d-flex align-items-center">
+                <div class="icon-box bg-${color}-subtle text-${color} rounded me-2" style="padding: 4px 8px;">
+                    <i class="bi ${icon}"></i>
+                </div>
+                <div>
+                    <div class="fw-bold">${name}</div>
+                    <div class="text-muted" style="font-size: 0.7rem;">#${c.contract_no || c.id}</div>
+                </div>
+            </div>`;
+        },
+
+        renderTable(tableId, list, mode) {
+            const table = document.querySelector(`#${tableId}`);
+            if (!table) return;
+
+            const tbody = table.querySelector(`tbody`);
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">暂无合同数据</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(c => `
+            <tr class="align-middle">
+                <td>${this.getItemTemplate(c)}</td>
+                <td>
+                    <span class="fw-bold text-dark">${mode === 'received' ? '来自 ID: ' + c.sender_id : '发送至 ID: ' + c.receiver_id}</span>
+                    <div class="text-muted small">品质: Q${c.quality || 0}</div>
+                </td>
+                <td><span class="badge bg-light text-dark border">Q${c.quality}</span></td>
+                <td>${Number(c.quantity).toLocaleString()}</td>
+                <td class="text-success">$${Number(c.price_per_unit).toFixed(3)}</td>
+                <td class="fw-bold">$${Number(c.total_amount).toLocaleString()}</td>
+                <td class="text-end">${this.getActionButtons(c, mode)}</td>
+            </tr>
+        `).join('');
+        },
+
+        getActionButtons(c, mode) {
+            // 使用 data-id 属性代替直接在 onclick 里传参，更安全且符合现代规范
+            if (mode === 'received') {
+                return `
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-success" onclick="ContractManager.handleAction(${c.id}, 'accept')">签署</button>
+                    <button class="btn btn-outline-danger" onclick="ContractManager.handleAction(${c.id}, 'reject')">拒绝</button>
+                </div>`;
+            } else if (mode === 'sent') {
+                return `<button class="btn btn-sm btn-outline-secondary" onclick="ContractManager.handleAction(${c.id}, 'cancel')">撤回</button>`;
+            } else {
+                return `<button class="btn btn-sm btn-danger" onclick="ContractManager.handleAction(${c.id}, 'terminate')">终止协议</button>`;
+            }
+        },
+
+        updateBadges(counts) {
+            // 动态更新侧边栏或导航栏的数字
+            if (counts.received !== undefined) {
+                const el = document.getElementById('count-received');
+                if (el) el.innerText = counts.received;
+            }
+        },
+
+        async handleAction(contractId, action) {
+            // 2026 友好提示：根据不同动作显示不同文案
+            const actionMap = {'accept': '签署并执行', 'reject': '拒绝', 'cancel': '撤回', 'terminate': '终止'};
+            if (!confirm(`确定要 ${actionMap[action] || action} 这份合同吗？`)) return;
+
+            try {
+                // 注意：API 路径应与后端匹配。此处假设后端路径为 /api/contract/{id}/{action}
+                const response = await fetch(`/api/contract/${contractId}/${action}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    // 局部提示（建议使用 Toast 代替 Alert）
+                    console.log("操作成功");
+                    this.fetchAll(); // 刷新数据
+
+                    // WebSocket 联动逻辑
+                    if (window.gameChat?.socket?.readyState === WebSocket.OPEN) {
+                        window.gameChat.socket.send(JSON.stringify({
+                            type: "contract_notification",
+                            action: action,
+                            target_id: result.sender_id === this.currentUserId ? result.receiver_id : result.sender_id
+                        }));
+                    }
+                } else {
+                    alert(`错误: ${result.detail || '操作失败'}`);
+                }
+            } catch (error) {
+                console.error("HandleAction Error:", error);
+                alert("网络连接失败，请稍后再试");
+            }
+        }
+
+    };
+
+    // 初始化：确保在 DOM 和游戏数据加载完成后执行
+    document.addEventListener('DOMContentLoaded', () => {
+        // 如果你有自定义的初始化事件
+        document.addEventListener('gameInitDone', () => ContractManager.fetchAll());
+
+        // 调试用：如果没有自定义事件，直接执行
+        // ContractManager.fetchAll();
+    });
+
+
+</script>
+{% endblock %}

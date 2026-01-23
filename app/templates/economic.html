@@ -1,0 +1,219 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid py-3 game-content">
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-primary border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small fw-bold">货币供应量 (M1) <i class="bi bi-question-circle"
+                                                                                  data-bs-toggle="tooltip"
+                                                                                  title="现金(M0) + 交易所挂单锁定资金"></i></span>
+                        <i class="bi bi-currency-dollar text-primary"></i>
+                    </div>
+                    <h3 id="m1-total" class="fw-bold mt-2">--</h3>
+                    <div class="progress mt-2" style="height: 4px;">
+                        <div id="m0-ratio" class="progress-bar" role="progressbar" style="width: 70%"
+                             title="现金占比"></div>
+                    </div>
+                    <small class="text-muted mt-1 d-block text-end" id="m0-val">M0: --</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-success border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small fw-bold">全服物价指数 (CPI) <i class="bi bi-question-circle"
+                                                                                     data-bs-toggle="tooltip"
+                                                                                     title="基于各资源加权成交均价，基准为100"></i></span>
+                        <i class="bi bi-graph-up-arrow text-success"></i>
+                    </div>
+                    <h3 id="cpi-val" class="fw-bold mt-2">--</h3>
+                    <div id="cpi-trend" class="small text-success fw-bold">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-warning border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small fw-bold">24H 交易总量 <i class="bi bi-question-circle"
+                                                                               data-bs-toggle="tooltip"
+                                                                               title="过去24小时全资源成交总额"></i></span>
+                        <i class="bi bi-cart-check text-warning"></i>
+                    </div>
+                    <h3 id="volume-24h" class="fw-bold mt-2">--</h3>
+                    <small id="order-count" class="text-muted">成交笔数: --</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-info border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small fw-bold">全社会总资产 <i class="bi bi-question-circle"
+                                                                               data-bs-toggle="tooltip"
+                                                                               title="M1 + 全服库存资源折算价值"></i></span>
+                        <i class="bi bi-shield-check text-info"></i>
+                    </div>
+                    <h3 id="total-assets" class="fw-bold mt-2">--</h3>
+                    <small class="text-muted">资产证券化率: <span id="asset-ratio">--</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between">
+                    <span class="fw-bold">价格指数与交易热度 (14D)</span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active">指数</button>
+                        <button class="btn btn-outline-secondary">交易量</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="main-history-chart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <span class="fw-bold">各产业链成交贡献度</span>
+                </div>
+                <div class="card-body">
+                    <div id="sector-pie-chart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3 fw-bold">资源微观市场快照</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light small">
+                <tr>
+                    <th class="ps-4">资源名称</th>
+                    <th>成交价格 (单位)</th>
+                    <th>24H 涨跌</th>
+                    <th>库存总量</th>
+                    <th>挂单深度 (Ask/Bid)</th>
+                    <th class="pe-4 text-center">市场流动性</th>
+                </tr>
+                </thead>
+                <tbody id="resource-table-body" class="small">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+    // 初始化 ECharts 实例
+    let historyChart, sectorChart;
+
+    async function refreshEconomyStats() {
+        try {
+            const res = await fetch('/api/public/economy');
+            const data = await res.json();
+
+            // 1. 更新大数字卡片
+            document.getElementById('m1-total').innerText = `$${data.m1.toLocaleString()}`;
+            document.getElementById('m0-val').innerText = `M0: $${data.m0.toLocaleString()}`;
+            document.getElementById('m0-ratio').style.width = `${(data.m0 / data.m1) * 100}%`;
+
+            document.getElementById('cpi-val').innerText = data.cpi.toFixed(2);
+            document.getElementById('volume-24h').innerText = `$${data.market_volume_24h['volume'].toLocaleString()}`;
+            document.getElementById('order-count').innerText = `成交笔数： ${data.market_volume_24h['count'].toLocaleString()}`;
+            document.getElementById('total-assets').innerText = `$${data.total_assets_value.toLocaleString()}`;
+
+            // 2. 渲染主历史折线图 (双轴：CPI + Volume)
+            renderHistoryChart(data.history);
+
+            // 3. 渲染产业链贡献度 (饼图)
+            renderSectorChart(data.sectors);
+
+            // 4. 填充资源详情表
+            renderResourceTable(data.resources);
+
+            // 初始化 Tooltips
+            const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltips.map(t => new bootstrap.Tooltip(t));
+
+        } catch (err) {
+            console.error("Economy API Load Failed:", err);
+        }
+    }
+
+    function renderHistoryChart(history) {
+        if (!historyChart) historyChart = echarts.init(document.getElementById('main-history-chart'));
+        const option = {
+            tooltip: {trigger: 'axis'},
+            grid: {left: '3%', right: '3%', bottom: '3%', containLabel: true},
+            xAxis: {type: 'category', data: history.dates, boundaryGap: false},
+            yAxis: [
+                {type: 'value', name: 'CPI', scale: true},
+                {type: 'value', name: 'Volume', splitLine: {show: false}}
+            ],
+            series: [
+                {
+                    name: 'CPI指数', type: 'line', smooth: true, data: history.cpi_values,
+                    lineStyle: {width: 3, color: '#198754'},
+                    areaStyle: {color: 'rgba(25, 135, 84, 0.1)'}
+                },
+                {
+                    name: '成交额', type: 'bar', yAxisIndex: 1, data: history.volume_values,
+                    itemStyle: {color: 'rgba(13, 110, 253, 0.2)'}
+                }
+            ]
+        };
+        historyChart.setOption(option);
+    }
+
+    function renderSectorChart(sectors) {
+        if (!sectorChart) sectorChart = echarts.init(document.getElementById('sector-pie-chart'));
+        const option = {
+            tooltip: {trigger: 'item'},
+            series: [{
+                type: 'pie', radius: ['40%', '70%'],
+                data: sectors.map(s => ({value: s.volume, name: s.name})),
+                itemStyle: {borderRadius: 8, borderColor: '#fff', borderWidth: 2}
+            }]
+        };
+        sectorChart.setOption(option);
+    }
+
+    function renderResourceTable(resources) {
+        const tbody = document.getElementById('resource-table-body');
+        tbody.innerHTML = resources.map(res => {
+            const priceColor = res.change >= 0 ? 'text-success' : 'text-danger';
+            const progressColor = res.liquidity > 70 ? 'bg-success' : (res.liquidity > 30 ? 'bg-info' : 'bg-warning');
+
+            return `
+            <tr>
+                <td class="ps-4 fw-bold">${res.name}</td>
+                <td>$${res.current_price.toFixed(3)}</td>
+                <td class="${priceColor}">${res.change >= 0 ? '↑' : '↓'} ${Math.abs(res.change)}%</td>
+                <td>${res.stock.toLocaleString()}</td>
+                <td><span class="text-danger">S:${res.ask_depth}</span> / <span class="text-success">B:${res.bid_depth}</span></td>
+                <td class="pe-4">
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar ${progressColor}" style="width: ${res.liquidity}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        }).join('');
+    }
+
+    // 首次加载
+    refreshEconomyStats();
+</script>
+{% endblock %}

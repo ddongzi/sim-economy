@@ -1,0 +1,34 @@
+from app.core.error import GameError
+from app.db.session import SessionDep
+from app.models import Player, TransactionLog,Inventory
+from sqlmodel import select
+import logging
+logger = logging.getLogger(__name__)
+class InventoryService:
+    """ 库存 """
+
+    @staticmethod
+    def change_resource(session:SessionDep, player_id:int,resource_id: int, quantity:int):
+        """ 改变库存 """
+        statement = select(Inventory).where(
+            Inventory.player_id == player_id,
+            Inventory.resource_id == resource_id
+        )
+        db_inventory = session.exec(statement).first()
+
+        if not db_inventory:
+            db_inventory = Inventory(
+                player_id=player_id,
+                resource_id=resource_id,
+                quantity=quantity
+            )
+            session.add(db_inventory)
+
+        db_inventory.quantity += quantity
+
+        if db_inventory.quantity < 0:
+            raise GameError("库存资源不足")
+
+        session.add(db_inventory)
+        session.flush()
+        logger.info("change cash: ", db_inventory)

@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card stat-card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">🌾 小麦农场 (等级 2)</h5>
+                <hr>
+                <p>消耗: ⚡ 10.00 电力 / 小时</p>
+                <p>产出: 🌾 50.00 小麦 / 小时</p>
+                
+                <div class="mb-3">
+                    <label class="form-label">生产周期: 8小时</label>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 45%">进行中 45%</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success w-100" disabled>生产中...</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h5 class="card-title">🛠️ 开始新订单</h5>
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">选择产品</label>
+                        <select class="form-select">
+                            <option>电力 (人工费: $1.00/单位)</option>
+                            <option>小麦 (人工费: $2.10/单位)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">数量</label>
+                        <input type="number" class="form-control" placeholder="100">
+                    </div>
+                    <div class="p-3 bg-light rounded mb-3">
+                        <small>预估人工成本: <strong>$210.00</strong></small><br>
+                        <small>预估原材料消耗: 🌾 0, ⚡ 100</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">确认启动</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

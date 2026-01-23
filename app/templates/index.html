@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimEcon | 经营模拟</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        /* 仅保留必要的背景设置，其他全部使用 Bootstrap 类 */
+        .hero-bg {
+            min-height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+            url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070') no-repeat center center/cover;
+        }
+    </style>
+</head>
+<body class="hero-bg d-flex align-items-center justify-content-center">
+
+<div class="card shadow-lg border-0" style="width: 400px; background: rgba(255, 255, 255, 0.95);">
+    <div class="card-body p-4">
+
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-dark mb-1">SimEcon</h2>
+            <p class="text-muted small">产业经营模拟系统</p>
+        </div>
+
+        <ul class="nav nav-pills nav-fill bg-light p-1 rounded mb-4" id="authTabs">
+            <li class="nav-item">
+                <button class="nav-link active" id="login-tab" onclick="switchTab('login')">登录</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="register-tab" onclick="switchTab('register')">注册</button>
+            </li>
+        </ul>
+
+        <div id="loginSection">
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">用户名</label>
+                    <input type="text" class="form-control form-control-lg" id="loginUser" placeholder="请输入账号"
+                           required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-bold">密码</label>
+                    <input type="password" class="form-control form-control-lg" id="loginPass" placeholder="请输入密码"
+                           required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">立即登录</button>
+            </form>
+        </div>
+
+        <div id="registerSection" class="d-none">
+            <form id="registerForm">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">新用户名</label>
+                    <input type="text" class="form-control" id="regUser" placeholder="字母或数字" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">电子邮箱</label>
+                    <input type="email" class="form-control" id="regEmail" placeholder="name@example.com" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-bold">安全密码</label>
+                    <input type="password" class="form-control" id="regPass" placeholder="设置您的密码" required>
+                </div>
+                <button type="submit" class="btn btn-success btn-lg w-100 mb-3">创建档案</button>
+            </form>
+        </div>
+
+        <div class="text-center border-top pt-3">
+            <p class="text-muted" style="font-size: 0.75rem;">&copy; 2026 SimEcon 经营模拟系统</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    /**
+     * 切换逻辑：使用标准 Bootstrap 的 d-none 工具类
+     * 这样表单高度会自动撑开卡片，绝对不会挡住按钮
+     */
+    function switchTab(type) {
+        const isLogin = type === 'login';
+
+        // 获取元素
+        const loginSec = document.getElementById('loginSection');
+        const regSec = document.getElementById('registerSection');
+        const loginBtn = document.getElementById('login-tab');
+        const regBtn = document.getElementById('register-tab');
+
+        if (isLogin) {
+            loginSec.classList.remove('d-none');
+            regSec.classList.add('d-none');
+            loginBtn.classList.add('active');
+            regBtn.classList.remove('active');
+        } else {
+            loginSec.classList.add('d-none');
+            regSec.classList.remove('d-none');
+            loginBtn.classList.remove('active');
+            regBtn.classList.add('active');
+        }
+    }
+
+</script>
+<script>
+    /**
+     * SimEcon 认证系统逻辑 (基于 Cookie 的身份验证)
+     */
+
+    const API_BASE = "/api/player";
+
+
+    /**
+     * 处理登录请求
+     */
+    document.getElementById('loginForm').onsubmit = async (e) => {
+        e.preventDefault();
+
+        const payload = {
+            name: document.getElementById('loginUser').value,
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+                // 重要：必须开启此项，浏览器才会存储并后续自动发送 Cookie
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                // 登录成功后直接跳转到游戏主界面
+                window.location.href = '/landscape';
+            } else {
+                const err = await response.json();
+                alert("登录失败: " + (err.detail || "用户名或密码错误"));
+            }
+        } catch (err) {
+            console.error("网络异常:", err);
+            alert("无法连接到服务器，请检查网络连接");
+        }
+    };
+
+    /**
+     * 处理注册请求
+     */
+    document.getElementById('registerForm').onsubmit = async (e) => {
+        e.preventDefault();
+
+        const payload = {
+            name: document.getElementById('regUser').value,
+            email: document.getElementById('regEmail').value,
+            password: document.getElementById('regPass').value
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/register`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert("注册成功！请使用新账号登录。");
+                // 注册成功后自动切回登录页签
+                switchTab('login');
+            } else {
+                const err = await response.json();
+                alert("注册失败: " + (err.detail || "该用户名可能已被占用"));
+            }
+        } catch (err) {
+            console.error("请求异常:", err);
+            alert("服务器通讯失败，请稍后再试");
+        }
+    };
+
+    /**
+     * 辅助功能：检查用户登录状态
+     * 在页面加载时运行，如果已有有效 Cookie 则直接进入游戏
+     */
+    async function checkAuthOnLoad() {
+        try {
+            const response = await fetch(`${API_BASE}/me`, {credentials: 'include'});
+            if (response.ok) {
+                window.location.href = '/game.html';
+            }
+        } catch (e) {
+            // 未登录或后端未响应，留在主页
+            console.log("未检测到登录状态");
+        }
+    }
+
+    // 页面加载时执行
+    // window.onload = checkAuthOnLoad;
+
+</script>
+</body>
+</html>

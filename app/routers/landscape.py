@@ -1,0 +1,24 @@
+# app/api/v1/endpoints/users.py
+from fastapi import APIRouter, Request
+from fastapi.params import Depends
+from starlette.responses import HTMLResponse
+from app.core.config import templates
+from app.crud import crud_building,crud_player
+from app.db.session import SessionDep
+from app.dependencies import get_current_user
+from app.models import PlayerPublic
+
+router = APIRouter()
+
+@router.get("/", tags=["landscape"])
+async def landscape(request: Request,
+                    response: HTMLResponse, session:SessionDep,
+                    player_in: PlayerPublic = Depends(get_current_user), ):
+    print(player_in)
+    buildings = crud_building.get_player_buildings(session, player_in.id)
+    return templates.TemplateResponse(
+        "landscape.html",
+        {
+            "request": request,
+        }
+    )

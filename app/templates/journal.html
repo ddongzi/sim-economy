@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* 内容容器：居中偏左 */
+    .article-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        display: flex;
+        gap: 40px;
+    }
+
+    .markdown-body {
+        flex: 1;
+        max-width: 720px;
+    }
+
+    /* 右侧侧边栏：紧凑、悬浮 */
+    .toc-sidebar {
+        width: 200px;
+        position: sticky;
+        top: 60px;
+        height: fit-content;
+        padding-left: 20px;
+        border-left: 1px solid #f0f0f0;
+        display: none; /* 默认隐藏，有内容后 JS 显示 */
+    }
+
+    @media (max-width: 1100px) {
+        .toc-sidebar {
+            display: none !important;
+        }
+    }
+
+    /* 导航样式：极简 */
+    .toc-link {
+        display: block;
+        font-size: 0.85rem;
+        color: #666;
+        text-decoration: none;
+        padding: 4px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: color 0.2s;
+    }
+
+    .toc-link:hover {
+        color: #0d6efd;
+    }
+
+    .toc-active {
+        color: #000;
+        font-weight: 600;
+        border-left: 2px solid #0d6efd;
+        margin-left: -21px;
+        padding-left: 19px;
+    }
+
+    /* 容器样式 */
+    .toc-section {
+        margin-bottom: 5px;
+    }
+
+    /* H2 所在的行 */
+    .toc-h2-wrapper {
+        display: flex;
+        align-items: center;
+    }
+
+    /* 折叠按钮 */
+    .toc-toggle {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0 5px;
+        transition: transform 0.2s;
+        font-size: 10px;
+        color: #666;
+    }
+
+
+
+    /* H3 缩进 */
+    .toc-children {
+        padding-left: 20px;
+        border-left: 1px solid #eee;
+        margin-left: 10px;
+    }
+
+    .tag-h3 {
+        font-size: 0.9em;
+        color: #666;
+    }
+
+</style>
+<div class="container-fluid py-3 ">
+    <div class="article-container">
+        <main id="md-render" class="markdown-body">
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-border-sm"></div>
+            </div>
+        </main>
+
+        <aside class="toc-sidebar" id="sidebar">
+            <div class="small fw-bold text-uppercase text-muted mb-3" style="letter-spacing: 0.05em;">目录内容</div>
+            <nav id="toc-nav">
+            </nav>
+        </aside>
+    </div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+
+    async function initWiki() {
+        const resp = await fetch("/static/guide.md")
+        const gameWikiMD = await resp.text();
+
+        const renderEl = document.getElementById('md-render');
+        const navEl = document.getElementById('toc-nav');
+        const sidebar = document.getElementById('sidebar');
+
+        // 1. 渲染 Markdown
+        renderEl.innerHTML = marked.parse(gameWikiMD);
+
+        // 2. 提取 H2 标签生成右侧目录
+        const headings = renderEl.querySelectorAll('h2, h3');
+
+        if (headings.length > 0) {
+            sidebar.style.display = 'block';
+
+            let tocHtml = '';
+            let currentH2Group = null;
+
+            Array.from(headings).forEach((h, index) => {
+                // 生成唯一 ID (处理非英文字符和重复)
+                const id = h.id || h.innerText.toLowerCase().trim().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
+                h.id = id;
+
+                const linkHtml = `<a href="#${id}" class="toc-link tag-${h.tagName.toLowerCase()}"># ${h.innerText}</a>`;
+
+                if (h.tagName === 'H2') {
+                    // 如果是 H2，关闭之前的组并开启新组
+                    if (currentH2Group) tocHtml += `</div></div>`;
+
+                    tocHtml += `
+                <div class="toc-section">
+                    <div class="toc-h2-wrapper">
+                        <button class="toc-toggle">▶</button>
+                        ${linkHtml}
+                    </div>
+                    <div class="toc-children" style="display: none;">`;
+                    currentH2Group = true;
+                } else if (h.tagName === 'H3' && currentH2Group) {
+                    // 如果是 H3，直接放入当前的 H2 组内
+                    tocHtml += linkHtml;
+                } else {
+                    // 孤立的 H3（前面没 H2）
+                    tocHtml += linkHtml;
+                }
+            });
+
+            if (currentH2Group) tocHtml += `</div></div>`;
+            navEl.innerHTML = tocHtml;
+
+            // 添加折叠交互事件
+            navEl.querySelectorAll('.toc-toggle').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const children = btn.parentElement.nextElementSibling;
+                    const isHidden = children.style.display === 'none';
+                    children.style.display = isHidden ? 'block' : 'none';
+                    btn.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+                });
+            });
+        }
+
+
+        // 3. 简单的滚动高亮逻辑
+        window.addEventListener('scroll', () => {
+            let current = "";
+            headings.forEach(h => {
+                const top = h.offsetTop;
+                if (pageYOffset >= top - 60) current = h.getAttribute("id");
+            });
+            document.querySelectorAll('.toc-link').forEach(link => {
+                link.classList.remove('toc-active');
+                if (link.getAttribute('href') === `#${current}`) link.classList.add('toc-active');
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initWiki);
+</script>
+
+{% endblock %}

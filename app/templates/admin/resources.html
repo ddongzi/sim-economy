@@ -1,0 +1,492 @@
+{% extends "admin/layout.html" %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 600px;">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" id="globalSearch" class="form-control border-start-0"
+                           placeholder="搜索资源名称、配方或 ID...">
+                </div>
+                <select class="form-select w-auto" id="filterCategory">
+                    <option value="all">所有分类</option>
+                    <option value="raw">原始材料</option>
+                    <option value="intermediate">中间体</option>
+                    <option value="final">最终产品</option>
+                </select>
+                <select class="form-select w-auto" id="filterBuilding">
+                    <option value="all">所有建筑</option>
+                </select>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <div class="btn-group shadow-sm" role="group" aria-label="视图切换">
+                    <input type="radio" class="btn-check" name="viewMode" id="viewModeGraph" autocomplete="off" checked
+                           onchange="switchView('graph')">
+                    <label class="btn btn-outline-primary" for="viewModeGraph" title="图形关系视图">
+                        <i class="bi bi-diagram-3-fill"></i>
+                    </label>
+
+                    <input type="radio" class="btn-check" name="viewMode" id="viewModeTable" autocomplete="off"
+                           onchange="switchView('table')">
+                    <label class="btn btn-outline-primary" for="viewModeTable" title="数据列表视图">
+                        <i class="bi bi-table"></i>
+                    </label>
+                </div>
+
+                <div class="vr mx-1"></div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addResourceModal">
+                        <i class="bi bi-plus-circle"></i> 新增资源
+                    </button>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRecipeModal">
+                        <i class="bi bi-plus-circle"></i> 新增配方
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btnResetLayout" onclick="resetLayout()">
+                        <i class="bi bi-arrows-move"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="view-container-table" class="view-panel ">
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive" style="height: 750px;">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light sticky-top" style="z-index: 10;">
+                <tr>
+                    <th class="ps-4">产出资源 / 配方名称</th>
+                    <th>所属建筑</th>
+                    <th style="min-width: 250px;">所需材料 (数量/品质)</th>
+                    <th>每小时产出</th>
+                    <th class="text-end pe-4">操作</th>
+                </tr>
+                </thead>
+                <tbody id="recipeTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="addResourceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>定义新资源</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addResourceForm" onsubmit="handleCreateResource(event)">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">资源名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="例如：精制面粉" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">基础价格 (分)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" name="base_price" class="form-control" value="0">
+                            </div>
+                            <div class="form-text">单位为最小货币单位</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">资源分类</label>
+                            <select name="industry_id" class="form-select" id="resCategory">
+
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold">图谱标识</label>
+                            <div class="d-flex gap-3 align-items-center bg-light p-3 rounded">
+                                <div id="iconPreview"
+                                     class="bg-white rounded border d-flex align-items-center justify-content-center"
+                                     style="width: 50px; height: 50px;">
+                                    <i class="bi bi-question-lg fs-3 text-muted"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <select class="form-select form-select-sm mb-2" name="icon"
+                                            onchange="updateIconPreview(this.value)">
+                                        <option value="box-seam">📦 默认方箱</option>
+                                        <option value="droplet">💧 液体/水</option>
+                                        <option value="lightning">⚡ 能源/电力</option>
+                                        <option value="gem">💎 矿石/稀有</option>
+                                        <option value="egg-fried">🍳 食物/烹饪</option>
+                                        <option value="gear">⚙️ 零件/机械</option>
+                                    </select>
+                                    <input type="color" name="color"
+                                           class="form-control form-control-color form-control-sm w-100" value="#0d6efd"
+                                           title="在图谱中显示的节点颜色">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label small fw-bold">描述/内部备注</label>
+                        <textarea name="description" class="form-control" rows="2"
+                                  placeholder="仅供后台查看..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary px-4">确认创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- modal 添加新配方 -->
+<div class="modal fade" id="addRecipeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white p-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-gear-wide-connected me-2"></i>配置生产配方</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="recipeForm">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold small text-muted text-uppercase">最终产出物品 (数量恒定为
+                                1)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-box-seam"></i></span>
+                                <select class="form-select form-select-lg fw-bold border-primary"
+                                        id="form-output-res-id" required>
+                                    <option value="">点击选择产出资源...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">生产建筑</label>
+                            <select class="form-select" id="form-building-id" required>
+                                <option value="">选择执行建筑...</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">生产速率 个/小时</label>
+                            <input type="number" class="form-control" id="form-perhour" placeholder=""
+                                       required>
+                        </div>
+                    </div>
+
+                    <hr class="my-4 text-secondary opacity-25">
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0 text-dark">
+                                <i class="bi bi-receipt me-2 text-danger"></i>原材料清单
+                            </h6>
+                            <button type="button" class="btn btn-sm btn-outline-danger px-3 rounded-pill"
+                                    onclick="addIngredientRow()">
+                                <i class="bi bi-plus"></i> 添加材料
+                            </button>
+                        </div>
+
+                        <div id="ingredients-container" class="bg-light p-3 rounded">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 p-3">
+                <button type="button" class="btn btn-link text-secondary text-decoration-none" data-bs-dismiss="modal">
+                    取消
+                </button>
+                <button type="button" class="btn btn-primary px-5 fw-bold shadow-sm" onclick="submitRecipe()">创建配方
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<!--从本地 gameData 渲染配方管理表格 -->
+<script>
+    async function renderRecipeTable() {
+        const tbody = document.getElementById('recipeTableBody');
+        // 1. 安全检查：确保数据已加载
+        const res = await fetch("/api/gamedata")
+        const data = await res.json()
+        const {recipes, buildings, resources} = data;
+        let html = '';
+
+        // 2. 遍历本地配方数据
+        recipes.forEach(recipe => {
+            // --- 核心查询逻辑：将 ID 映射为对象 ---
+            const building = buildings.find(b => b.id === recipe.building_meta_id) || {name: '未知建筑'};
+            const outputRes = resources.find(r => r.id === recipe.output_resource_id) || {name: '未知资源', icon: '❓'};
+
+            // 3. 处理原材料 (Inputs) 的显示
+            let inputsHtml = '';
+            if (recipe.inputs && recipe.inputs.length > 0) {
+                inputsHtml = recipe.inputs.map(input => {
+                    // 根据 input.resource_id 找到对应的资源详情
+                    const resDetail = resources.find(r => r.id === input.resource_id) || {name: '未知', icon: '?'};
+                    return `
+                    <div class="d-inline-flex align-items-center bg-light border rounded px-2 py-1 me-1 mb-1">
+                        <span class="me-1">😂</span>
+                        <span class="small fw-bold">${resDetail.name}</span>
+                        <span class="badge bg-primary ms-2">x${input.quantity}</span>
+                        ${input.quality_req > 1 ? `<span class="badge bg-warning text-dark ms-1">Q${input.quality_req}</span>` : ''}
+                    </div>`;
+                }).join('');
+            } else {
+                inputsHtml = '<span class="text-muted small">无需原材料</span>';
+            }
+
+            // 4. 构造行 HTML
+            html += `
+        <tr>
+            <td class="ps-4">
+                <div class="d-flex align-items-center">
+                    <div>
+                        <div class="fw-bold text-dark">${outputRes.name}</div>
+                        <small class="text-muted">ID: ${recipe.output_resource_id} | 产出: 1</small>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
+                    <i class="bi bi-house-door me-1"></i>${building.name}
+                </span>
+            </td>
+            <td>
+                <div class="d-flex flex-wrap">${inputsHtml}</div>
+            </td>
+            <td>
+                <div class="fw-bold">${recipe.per_hour} </div>
+            </td>
+            <td class="text-end pe-4">
+                <div class="btn-group shadow-sm">
+                    <button class="btn btn-sm btn-white border" onclick="openEditRecipeModal(${recipe.id})" title="修改">
+                        <i class="bi bi-pencil text-primary"></i>
+                    </button>
+                    <button class="btn btn-sm btn-white border" onclick="deleteRecipe(${recipe.id})" title="删除">
+                        <i class="bi bi-trash text-danger"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+        });
+
+        tbody.innerHTML = html || '<tr><td colspan="6" class="text-center py-4">本地库中暂无配方</td></tr>';
+    }
+
+    renderRecipeTable();
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async ()=>{
+
+        const res = await fetch("/api/gamedata")
+        const data = await res.json()
+        window.gameData = data
+    })
+</script>
+
+<!-- 资源添加modal -->
+<script>
+    document.getElementById('addResourceModal').addEventListener('show.bs.modal', function () {
+        const ele = document.querySelector("#resCategory")
+        ele.innerHTML = ""
+        for (const c of window.gameData.industries) {
+            ele.innerHTML += `<option value="${c.id}">${renderIcon(c.icon)} ${c.name}</option>`
+        }
+    })
+
+    // 实时更新模态框中的图标预览
+    function updateIconPreview(iconName) {
+        const preview = document.getElementById('iconPreview');
+        preview.innerHTML = `<i class="bi bi-${iconName} fs-3 text-primary"></i>`;
+    }
+
+    // 提交创建资源
+    async function handleCreateResource(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+
+        // 格式化数据以符合后端要求
+        payload.base_price = parseFloat(payload.base_price);
+
+        try {
+            const response = await fetch('/api/admin/resources/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                showToast("资源创建成功！", 'success');
+                bootstrap.Modal.getInstance(document.getElementById('addResourceModal')).hide();
+
+                // 重要：刷新图谱
+                if (typeof loadResourceGraph === 'function') loadResourceGraph();
+                form.reset();
+            } else {
+                const err = await response.json();
+                showToast("创建失败: " + (err.detail || "校验未通过"), 'error');
+            }
+        } catch (error) {
+            showToast("无法连接到服务器", 'error');
+        }
+    }
+
+</script>
+
+
+<!-- 添加配方 -->
+<script>
+    // 监听 Modal 显示事件：初始化静态下拉框并添加首行
+    document.getElementById('addRecipeModal').addEventListener('show.bs.modal', async function () {
+        const container = document.getElementById('ingredients-container');
+
+        // 1. 初始化静态下拉框（建筑和产出资源）
+        await initStaticSelects();
+
+        // 2. 重置表单并清空动态行
+        document.getElementById('recipeForm').reset();
+        container.innerHTML = '';
+
+        // 3. 自动添加第一行原材料
+        addIngredientRow();
+    });
+
+    /**
+     * 使用 gameData 填充建筑和产出资源的下拉菜单
+     */
+    async function initStaticSelects() {
+        const buildingSelect = document.getElementById('form-building-id');
+        const outputResSelect = document.getElementById('form-output-res-id');
+        const {buildings, resources} = window.gameData;
+        // 填充建筑
+        buildingSelect.innerHTML = '<option value="">选择执行建筑...</option>' +
+            buildings.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+        // 填充产出资源
+        outputResSelect.innerHTML = '<option value="">点击选择产出资源...</option>' +
+            resources.map(r => `<option value="${r.id}"> ${r.name}</option>`).join('');
+    }
+
+    /**
+     * 动态添加原材料行
+     */
+    function addIngredientRow(data = {res_id: '', qty: 1, quality: 1}) {
+        const container = document.getElementById('ingredients-container');
+        const rowId = Date.now();
+
+        // 生成资源选项
+        const resOptions = window.gameData.resources.map(r =>
+            `<option value="${r.id}" ${data.res_id == r.id ? 'selected' : ''}> ${r.name}</option>`
+        ).join('');
+
+        const rowHtml = `
+    <div class="row g-2 mb-2 ingredient-row align-items-end" id="row-${rowId}">
+        <div class="col-md-5">
+            <select class="form-select form-select-sm res-select" required>
+                <option value="">选择消耗材料...</option>
+                ${resOptions}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="number" class="form-control form-control-sm qty-input" placeholder="数量" value="${data.qty}" min="0.1" step="0.1" required>
+        </div>
+        <div class="col-md-2">
+            <input type="number" class="form-control form-control-sm qual-input" placeholder="品质" value="${data.quality}" min="1">
+        </div>
+        <div class="col-md-2 text-end">
+            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeRow(${rowId})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </div>`;
+
+        container.insertAdjacentHTML('beforeend', rowHtml);
+    }
+
+    function removeRow(id) {
+        const row = document.getElementById(`row-${id}`);
+        if (document.querySelectorAll('.ingredient-row').length > 1) {
+            row.remove();
+        } else {
+            alert("至少需要保留一个原材料行（或者清空内容）");
+        }
+    }
+
+    /**
+     * 提交数据到 API
+     */
+    async function submitRecipe() {
+        // 1. 获取基础表单数据
+        const buildingId = document.getElementById('form-building-id').value;
+        const outputResId = document.getElementById('form-output-res-id').value;
+        const perhour = document.getElementById('form-perhour').value;
+
+        if (!buildingId || !outputResId || !perhour) {
+            alert("请填写完整的配方基础信息");
+            return;
+        }
+
+        // 2. 构造 API Payload
+        const payload = {
+            building_meta_id: buildingId,
+            output_resource_id: parseInt(outputResId),
+            per_hour: parseInt(perhour),
+            inputs: []
+        };
+
+        // 3. 收集原材料动态行数据
+        document.querySelectorAll('.ingredient-row').forEach(row => {
+            const resId = row.querySelector('.res-select').value;
+            const qty = row.querySelector('.qty-input').value;
+            const quality = row.querySelector('.qual-input').value;
+
+            if (resId) {
+                payload.inputs.push({
+                    resource_id: resId,
+                    quantity: parseFloat(qty),
+                });
+            }
+        });
+
+        // 4. 发送 API 请求
+        try {
+            const response = await fetch('/api/admin/resources/recipe/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert("配方保存成功！");
+                // 关闭 Modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addRecipeModal'));
+                modal.hide();
+                // 刷新列表（调用你之前的渲染函数）
+                if (typeof renderRecipeTable === 'function') renderRecipeTable();
+            } else {
+                const errorData = await response.json();
+                alert("保存失败: " + (errorData.detail || "未知错误"));
+            }
+        } catch (error) {
+            console.error("提交异常:", error);
+            alert("网络请求失败，请稍后重试");
+        }
+    }
+</script>
+{% endblock %}

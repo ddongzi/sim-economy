@@ -1,0 +1,155 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* 资源磁贴样式 */
+    .resource-tile {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 2px solid transparent;
+    }
+
+    .resource-tile:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* 选中状态 */
+    .resource-tile.active-border {
+        border-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.02);
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .resource-icon i {
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    }
+</style>
+<div class="container-fluid py-3 ">
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2"></i> 我的仓库</h5>
+                    <div class="input-group input-group-sm w-auto">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control bg-light border-start-0" placeholder="搜索资源...">
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 mb-4 overflow-auto pb-2">
+                        <button class="btn btn-sm btn-outline-primary active">全部</button>
+                        <button class="btn btn-sm btn-outline-secondary">能源</button>
+                        <button class="btn btn-sm btn-outline-secondary">农业</button>
+                        <button class="btn btn-sm btn-outline-secondary">半导体</button>
+                    </div>
+
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3" id="inventory-container">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <div class="card-header bg-dark text-white py-3">
+                    <h6 class="mb-0">资源详情</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-lightning-charge-fill text-warning display-4"></i>
+                        <h4 class="mt-2">电力</h4>
+                        <span class="badge bg-info text-dark">品质: Q2</span>
+                    </div>
+
+                    <div class="list-group list-group-flush mb-4 small">
+                        <div class="list-group-item d-flex justify-content-between px-0">
+                            <span class="text-muted">当前库存:</span>
+                            <span class="fw-bold">1,240,500 Units</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between px-0">
+                            <span class="text-muted">平均成本:</span>
+                            <span class="fw-bold text-success">$0.212</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between px-0">
+                            <span class="text-muted">估计总价值:</span>
+                            <span class="fw-bold">$262,986</span>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newContractModal">
+                            <i class="bi bi-file-earmark-plus me-2"></i>发送合同 (免税)
+                        </button>
+                        <a href="/exchange" class="btn btn-outline-primary">
+                            <i class="bi bi-graph-up-arrow me-2"></i>前往交易所卖出
+                        </a>
+                        <button class="btn btn-outline-danger btn-sm mt-3">
+                            <i class="bi bi-trash me-2"></i>报废资源
+                        </button>
+                    </div>
+                </div>
+                <div class="card-footer bg-light small text-muted">
+                    <i class="bi bi-info-circle me-1"></i> 提示：通过合同卖给玩家可节省3%税费。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    /**
+     * 获取并刷新仓库资源展示
+     */
+    async function fetchAndRenderInventory() {
+        try {
+            const response = await fetch(`/api/inventory`);
+            const inventoryData = await response.json(); // 结构类似: [{resource_id: 1, quantity: 1240500}, ...]
+            console.log(inventoryData)
+            const container = document.getElementById('inventory-container');
+            if (!container) return;
+            console.log(container)
+
+            // 清空现有内容
+            container.innerHTML = '';
+
+            inventoryData.forEach(item => {
+                const resource = window.gameData.resources.find(r => r.id === item.resource_id)
+                // 数学处理：大数字格式化 (例如 1,240,500)
+                const formattedQty = item.quantity.toLocaleString();
+
+                const cardHtml = `
+                <div class="col">
+                    <div class="card h-100 resource-tile shadow-sm border-0 bg-white"
+                         style="transition: transform 0.2s;"
+                         onmouseover="this.style.transform='translateY(-5px)'"
+                         onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card-body text-center p-3">
+                            <div class="resource-icon mb-2">
+                                <i class="bi ${resource.icon}  fs-1"></i>
+                            </div>
+                            <div class="fw-bold small text-truncate text-muted">${resource.name}</div>
+                            <div class="text-primary fw-bold fs-5">${formattedQty}</div>
+                            <span class="badge bg-light text-dark mt-2 border">Q${item.resource_id}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
+
+        } catch (error) {
+            console.error("仓库数据加载失败:", error);
+        }
+    }
+   console.log("脚本块加载成功"); // 第一行先打印
+        // 推荐写法
+    document.addEventListener('DOMContentLoaded', async () =>  {
+        await fetchAndRenderInventory();
+    });
+
+</script>
+{% endblock %}

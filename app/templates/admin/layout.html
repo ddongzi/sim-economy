@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SimEcon Admin{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --sidebar-width: 240px;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            background: #2c3e50;
+            color: white;
+            z-index: 1000;
+        }
+
+        .sidebar .nav-link {
+            color: #bdc3c7;
+            padding: 12px 20px;
+            transition: 0.3s;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background: #34495e;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+        }
+
+        .top-navbar {
+            background: white;
+            border-bottom: 1px solid #dee2e6;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<script>
+</script>
+<div class="sidebar d-flex flex-column p-3">
+    <h3 class="text-center py-3 border-bottom border-secondary mb-4">
+        <span class="text-info">Sim</span>Econ
+    </h3>
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item">
+            <a href="/admin/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-speedometer2 me-2"></i> 控制面板
+            </a>
+        </li>
+        <li>
+            <a href="/admin/players" class="nav-link {% if active_page == 'players' %}active{% endif %}">
+                <i class="bi bi-people me-2"></i> 玩家管理
+            </a>
+        </li>
+        <li>
+            <a href="/admin/resources" class="nav-link {% if active_page == 'resources' %}active{% endif %}">
+                <i class="bi bi-box-seam me-2"></i> 资源与配方
+            </a>
+        </li>
+        <li>
+            <a href="/admin/market" class="nav-link {% if active_page == 'market' %}active{% endif %}">
+                <i class="bi bi-shop me-2"></i> 市场监控
+            </a>
+        </li>
+        <li>
+            <a href="/admin/buildings" class="nav-link {% if active_page == 'buildings' %}active{% endif %}">
+                <i class="bi bi-building-gear me-2"></i> 建筑管理
+            </a>
+        </li>
+                <li>
+            <a href="/admin/accounting" class="nav-link {% if active_page == 'buildings' %}active{% endif %}">
+                <i class="bi bi-building-gear me-2"></i> 财务审计
+            </a>
+        </li>
+    </ul>
+    <hr>
+    <div class="dropdown">
+        <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle"
+           data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle me-2"></i> <strong>管理员</strong>
+        </a>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm rounded">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="#">Admin</a></li>
+                <li class="breadcrumb-item active">{% block breadcrumb %}{% endblock %}</li>
+            </ol>
+        </nav>
+        <div>
+            <span class="badge bg-success">服务器状态: 运行中</span>
+        </div>
+    </div>
+
+    {% block content %}{% endblock %}
+</div>
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">系统通知</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+        </div>
+    </div>
+</div>
+<script src="/app/static/js/global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+     /**
+     *  图标渲染函数
+     * @param {string} iconName - 图标类名或标识符
+     * @param {string} defaultIcon - 缺省时显示的 Emoji 或类名
+     * @returns {string} - 完整的 HTML 字符串
+     */
+    function renderIcon(iconName, defaultIcon = '🏗️') {
+        // 如果没有传入 iconName，直接返回默认值
+        if (!iconName || iconName.trim() === "") {
+            return `<span>${defaultIcon}</span>`;
+        }
+
+        // 如果 iconName 看起来像类名（不包含 HTML 标签），则封装成 <i>
+        // 逻辑：如果 iconName 里有 'bi-' 或 'fa-'，判定为图标库类名
+        if (iconName.includes('bi-') || iconName.includes('fa-')) {
+            return `<i class="${iconName} me-2"></i>`;
+        }
+
+        // 否则，它可能本身就是一个 Emoji
+        return `<span class="me-2">${iconName}</span>`;
+    }
+
+</script>
+<script>
+    // 通用 Toast 显示函数
+    function showToast(message, type = 'success') {
+        const toastEl = document.getElementById('liveToast');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastTitle = document.getElementById('toastTitle');
+
+        // 设置颜色主题
+        toastEl.classList.remove('bg-success', 'bg-danger', 'text-white');
+        if (type === 'success') {
+            toastEl.classList.add('bg-success', 'text-white');
+            toastTitle.innerText = '成功';
+        } else {
+            toastEl.classList.add('bg-danger', 'text-white');
+            toastTitle.innerText = '错误';
+        }
+
+        toastMessage.innerText = message;
+
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+</script>
+{% block scripts %}{% endblock %}        <!-- 4. 最后执行子页面 JS -->
+</body>
+</html>
