@@ -1,0 +1,118 @@
+<div class="modal fade" id="buildingControlModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="bi bi-tools me-2"></i>新建建筑项目
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted text-uppercase">选择设施</label>
+                    <select class="form-select form-select-lg border-2" id="select-building"
+                            onclick="handleSelectChange(this.value)"
+                    >
+
+                    </select>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="p-3 border rounded bg-light text-center">
+                            <small class="text-muted d-block mb-1">预计工期</small>
+                            <h4 class="mb-0 fw-bold text-primary" id="m-time">2h</h4>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 border rounded bg-light text-center">
+                            <small class="text-muted d-block mb-1">施工款项</small>
+                            <h4 class="mb-0 fw-bold text-success" id="m-cash">$</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small fw-bold text-muted text-uppercase">所需建筑材料</label>
+                    <div class="list-group shadow-sm">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-box me-2"></i>钢材 (Steel)</span>
+                            <div class="text-end">
+                                <span class="fw-bold" id="req-steel">100</span>
+                                <small class="text-muted">/ 120 (库存)</small>
+                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-layers me-2"></i>混凝土 (Concrete)</span>
+                            <div class="text-end">
+                                <span class="fw-bold text-danger" id="req-concrete">50</span>
+                                <small class="text-muted">/ 12 (库存)</small>
+                                <i class="bi bi-x-circle-fill text-danger ms-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="small text-danger mt-3 mb-0" id="m-warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i> 材料不足，无法开始施工。
+                </p>
+            </div>
+
+            <div class="modal-footer border-0 p-3 bg-light">
+                <button type="button" id="btn-build" class="btn btn-primary px-5 fw-bold shadow-sm"
+                        data-bs-dismiss="modal">
+                    确认施工
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    let current_solt_num = 0
+    function handleSelectChange(val) {
+        const building_meta_id = val;
+        document.querySelector("#m-cash").innerText = `$ ${window.gameData.buildings.find(b => b.id == building_meta_id).building_cost}`
+    }
+
+    function renderSelectBuilding() {
+        const buildings = window.gameData.buildings;
+        const ele = document.querySelector("#select-building")
+        ele.innerHTML = ""
+        for (const building of buildings) {
+            ele.innerHTML += `<option value="${building.id}">${renderIcon(building.icon)} ${building.name}</option>`
+        }
+    }
+
+    document.getElementById('btn-build').addEventListener('click', async function () {
+        const select = document.getElementById('select-building');
+        const selectedOption = select.options[select.selectedIndex];
+        // 获取绑定的 ID
+        const buildingId = selectedOption.getAttribute('value');
+        const buildingName = selectedOption.text;
+
+        // 发送给后端
+        fetch('/api/buildings/construct', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                building_meta_id: buildingId, // 这里的 ID 很关键
+                slot_number: current_solt_num,
+            })
+        }).then(res => {
+            if (res.ok) showToast(`${buildingName} 开始施工！`);
+        }).catch(e => {
+            showToast(e.toLocaleString())
+        })
+        await loadBuildings()
+        ;
+    });
+    document.querySelector("#buildingControlModal").addEventListener('show.bs.modal', (event) => {
+        renderSelectBuilding()
+        const button = event.relatedTarget;
+        // 2. 提取 data-id (这就是建筑实例 ID)
+        current_solt_num = parseInt(button.getAttribute('data-slot-num'));
+    })
+
+</script>

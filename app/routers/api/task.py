@@ -7,8 +7,10 @@ from app.dependencies import get_current_user
 from datetime import datetime, timedelta
 from app.crud import crud_building_task, crud_inventory, crud_player, crud_recipe
 from app.logic.task import calculate_task_cost
-from app.models import PlayerPublic, BuildingTaskCreate, BuildingTaskBase
+from app.models import PlayerPublic, BuildingTaskCreate, BuildingTaskBase, TransactionActionType, BuildingTask
+from app.service.accounting import AccountingService
 from app.service.inventory import InventoryService
+from app.service.playerService import playerService
 
 router = APIRouter()
 
@@ -33,14 +35,18 @@ async def product(session: SessionDep, building_task: BuildingTaskCreate,
     hours = building_task.quantity / recipe.per_hour
 
     # 创建任务
-    crud_building_task.create_building_task(session, building_task, player_id=player_in.id, duration=hours)
+    task = crud_building_task.create_building_task(session, building_task, player_id=player_in.id, duration=hours)
+    session.flush()
     # 扣除成本
-    crud_player.deduct_cash(session, player_in.id, cash=building_task.cash_cost)
+    AccountingService.change_cash(session, player_in.id, -building_task.cash_cost,
+                                  TransactionActionType.PRODUCE_COST, task.id)
     # 扣除库存？？
     for input in recipe.inputs:
         InventoryService.change_resource(session, player_in.id, input.resource_id,
                                         -input.quantity * building_task.quantity)
     session.commit()
+    player = crud_player.get_player_by_id(session, player_in.id)
+    await playerService.send_update_cash(player_in.name, player.cash)
     return {"msg": "建筑任务创建成功"}
 
 
@@ -51,11 +57,6 @@ async def get_task(session: SessionDep, player_building_id: int,
     task = crud_building_task.get_building_task_by_player_building_id(session, player_building_id)
     if not task:
         raise HTTPException(status_code=400, detail= GameRespCode.BUILDING_IDLE.detail)
-    if task.end_time < datetime.now():
-        # 加入仓库，删除任务
-        InventoryService.change_resource(session, player_in.id, task.resource_id, task.quantity)
-        crud_building_task.remove_building_task(session, task.id)
-        raise HTTPException(status_code=400, detail= GameRespCode.TASK_STALE.detail)
     return task
 
 
@@ -73,6 +74,8 @@ async def claim_task(session: SessionDep, player_building_id: int,
         # 任务已经完成，但还没有领取
         InventoryService.change_resource(session, player_in.id, task.resource_id, task.quantity)
         crud_building_task.remove_building_task(session, task.id)
+        session.commit()
+
         return {"msg": "领取成功，库存已经更新"}
 
 

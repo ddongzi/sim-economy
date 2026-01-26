@@ -20,7 +20,7 @@
                 <li class="nav-item">
                     <button class="nav-link fw-bold text-secondary" id="recurring-tab" data-bs-toggle="tab"
                             data-bs-target="#recurring-pane">
-                        ⏳ 长期协议 (期货)
+                        ⏳ 定期合同
                     </button>
                 </li>
             </ul>
@@ -181,7 +181,8 @@
 {% block scripts %}
 <script>
 
-    document.addEventListener("gameInitDone", () => {
+    document.addEventListener("DOMContentLoaded",async () => {
+        await window.gameDataPromise
         const modalEl = document.getElementById('newContractModal');
         const form = document.getElementById('contractForm');
         const resourceSelect = document.querySelector("#contract-resource");
@@ -461,12 +462,10 @@
     };
 
     // 初始化：确保在 DOM 和游戏数据加载完成后执行
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded',async () => {
         // 如果你有自定义的初始化事件
-        document.addEventListener('gameInitDone', () => ContractManager.fetchAll());
-
-        // 调试用：如果没有自定义事件，直接执行
-        // ContractManager.fetchAll();
+        await window.gameDataPromise
+        await ContractManager.fetchAll();
     });
 
 

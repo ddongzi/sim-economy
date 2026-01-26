@@ -10,6 +10,7 @@ from typing import Optional
 
 from sqlalchemy.testing.pickleable import User
 from app.models import PlayerCreate,PlayerPublic
+from app.db.session import SessionDep
 
 # 这里的配置应与你生成 Token 时一致
 SECRET_KEY = "你的加密密钥"
@@ -60,3 +61,8 @@ async def get_current_user(request: Request)->PlayerPublic:
         return PlayerPublic(name=username, id=int(userid))  # 或者返回从数据库查到的 User 对象
     except JWTError:
         raise HTTPException(status_code=401, detail="凭证已过期或被篡改")
+
+async def refresh_building( session:SessionDep,
+                            current_player: PlayerPublic = Depends(get_current_user)):
+    """ 更新建筑或任务状态 """
+    pass

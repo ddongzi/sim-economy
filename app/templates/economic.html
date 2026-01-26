@@ -12,7 +12,7 @@
                                                                                   title="现金(M0) + 交易所挂单锁定资金"></i></span>
                         <i class="bi bi-currency-dollar text-primary"></i>
                     </div>
-                    <h3 id="m1-total" class="fw-bold mt-2">--</h3>
+                    <h3 id="m1-total" class="fw-bold mt-2 text-truncate" title="这里放原始数字">--</h3>
                     <div class="progress mt-2" style="height: 4px;">
                         <div id="m0-ratio" class="progress-bar" role="progressbar" style="width: 70%"
                              title="现金占比"></div>
@@ -125,14 +125,14 @@
             const data = await res.json();
 
             // 1. 更新大数字卡片
-            document.getElementById('m1-total').innerText = `$${data.m1.toLocaleString()}`;
-            document.getElementById('m0-val').innerText = `M0: $${data.m0.toLocaleString()}`;
+            document.getElementById('m1-total').innerText = `$${formatValue(data.m1)}`;
+            document.getElementById('m0-val').innerText = `M0: $${formatValue(data.m0)}`;
             document.getElementById('m0-ratio').style.width = `${(data.m0 / data.m1) * 100}%`;
 
             document.getElementById('cpi-val').innerText = data.cpi.toFixed(2);
             document.getElementById('volume-24h').innerText = `$${data.market_volume_24h['volume'].toLocaleString()}`;
             document.getElementById('order-count').innerText = `成交笔数： ${data.market_volume_24h['count'].toLocaleString()}`;
-            document.getElementById('total-assets').innerText = `$${data.total_assets_value.toLocaleString()}`;
+            document.getElementById('total-assets').innerText = `$${formatValue(data.total_assets_value)}`;
 
             // 2. 渲染主历史折线图 (双轴：CPI + Volume)
             renderHistoryChart(data.history);

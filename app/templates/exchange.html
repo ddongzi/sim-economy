@@ -216,7 +216,8 @@
         }).join('') || '<tr><td colspan="3" class="text-center text-muted small py-3">暂无需求</td></tr>';
     }
 
-    document.addEventListener('gameInitDone', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        await window.gameDataPromise
         renderResourceSidebar();
 
     });
@@ -227,7 +228,8 @@
 </script>
 <script>
 
-    document.addEventListener('gameInitDone', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        await window.gameDataPromise
         const btn = document.getElementById('submitOrderBtn');
         if (btn) {
             btn.addEventListener('click', async (event) => {

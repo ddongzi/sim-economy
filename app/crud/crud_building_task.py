@@ -26,8 +26,6 @@ def create_building_task(session: Session, building_task_in: BuildingTaskCreate,
     db_obj.end_time = db_obj.start_time + timedelta(hours=duration)
 
     session.add(db_obj)
-    session.commit()
-    session.refresh(db_obj)
     return db_obj
 
 def remove_building_task(session: Session, task_id: int) -> BuildingTask:

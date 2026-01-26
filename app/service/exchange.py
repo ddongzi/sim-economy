@@ -5,6 +5,7 @@ import json
 from app.db.db import engine
 from app.db.session import SessionDep
 from app.crud import crud_market,crud_inventory,crud_player,crud_resources
+from app.dependencies import get_current_user
 from app.models import MarketOrder, TransactionActionType, MarketOrderPublic
 from typing import Dict
 from abc import ABC, abstractmethod
@@ -99,17 +100,16 @@ def match_order(session:SessionDep,new_order: MarketOrder):
                                                                       )
     for match in potential_matches:
         if new_order.status != 0: break;
+        # 如果匹配了，但是发生自我冲突，跳过即可
+        if match.player_id == new_order.player_id:
+            continue
         my_remaining = new_order.total_quantity - new_order.filled_quantity
         match_remaining = match.total_quantity - match.filled_quantity
         trade_qty = min(my_remaining, match_remaining)
 
         if trade_qty <= 0: continue
 
-        # 如果匹配了，但是发生自冲突，应该取消该订单，即标记订单状态为取消
-        if match.player_id == new_order.player_id:
-            new_order.status = 2
-            refund_marker_order(session, new_order)
-            break
+
 
         execute_settlement(session, new_order, match, trade_qty)
         # 4. 更新订单状态
@@ -126,7 +126,9 @@ def calculate_cpi(session:SessionDep):
         current_price = resource.base_price
         if recent_price != 0:
             current_price = recent_price
-        weight = getattr(resource, 'weight', 1.0)
+        # 基础权重
+        weight = getattr(resource, 'base_weight', 1.0)
+        logger.info(f"calculate weight {weight} {resource.id} {current_price} {resource.base_price}")
         current_market_total += current_price * weight
         base_market_total += resource.base_price * weight
     # 4. 计算指数 (基准值为 100)
@@ -134,7 +136,7 @@ def calculate_cpi(session:SessionDep):
         return 100.0
 
     cpi = (current_market_total / base_market_total) * 100
-    return round(cpi, 2)
+    return round(cpi, 3)
 
 class ExchangeService(WSServiceBase):
 

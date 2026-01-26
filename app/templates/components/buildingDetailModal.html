@@ -1,0 +1,432 @@
+<div class="modal fade" id="buildingDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg bg-light">
+            <div class="modal-header bg-dark text-white p-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-factory me-2"></i>
+                    <span id="det-name">高级炼钢厂</span>
+                    <span class="badge bg-primary ms-2">Lv.<span id="det-level">3</span></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-0">
+                <div class="row g-0">
+                    <div class="col-lg-3 border-end p-4">
+                        <section class="mb-4">
+                            <h6 class="text-muted small fw-bold text-uppercase mb-3">建筑详情</h6>
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="fs-1 me-3" id="det-icon">🏗️</div>
+                                <div>
+                                    <div class="fw-bold">维护成本</div>
+                                    <div class="text-danger">-$450/hr</div>
+                                </div>
+                            </div>
+                            <div class="small text-muted">生产效率:
+                                <span class="text-dark fw-bold" id="current-rate">98%</span></div>
+                        </section>
+
+                        <hr>
+
+                        <section class="mb-4">
+                            <h6 class="text-muted small fw-bold text-uppercase mb-3">建筑操作</h6>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary btn-sm fw-bold" id="upgrade-building-btn">升级建筑
+                                    <span class="vr mx-2" style="height: 12px; opacity: 0.5;"></span>
+                                    <span id="upgrade-cost" class="opacity-75">
+        $0.00
+    </span>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm">搬迁地块</button>
+                                <button class="btn btn-outline-danger btn-sm" id="remove-building-btn">报废拆除</button>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="col-lg-9 p-4 bg-white">
+                        <h6 class="text-muted small fw-bold text-uppercase mb-3">正在进行的任务</h6>
+                        <div class="d-flex align-items-center mb-3" id="building-task-container">
+                            <span class="text-muted small">当前无进行中任务</span>
+                        </div>
+                        <h6 class="text-muted small fw-bold text-uppercase mb-3">可生产资源列表</h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle border">
+                                <thead class="table-light">
+                                <tr>
+                                    <th>产出资源</th>
+                                    <th>原料</th>
+                                    <th>产出</th>
+                                    <th>操作</th>
+                                </tr>
+                                </thead>
+                                <tbody id="production-list-container">
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <div class="spinner-border spinner-border-sm me-2"></div>
+                                        正在加载生产方案...
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    <!-- 变量 -->
+    let levels;
+    let playerBuilding;
+    let productionRate;
+</script>
+<script>
+    document.querySelector("#upgrade-building-btn").addEventListener("click", async function () {
+        const buildingId = this.getAttribute("data-id");
+        if (!buildingId) return;
+        console.log("执行升级，建筑 ID:", buildingId);
+        await upgradeBuilding(buildingId);
+    });
+    document.querySelector("#remove-building-btn").addEventListener("click", async function () {
+        const buildingId = this.getAttribute("data-id");
+        if (!buildingId) return;
+        console.log("拆除，建筑 ID:", buildingId);
+        await removeBuilding(buildingId);
+    });
+
+    async function removeBuilding(buildingId) {
+        // 升级
+        const response = await fetch(`/api/buildings/remove/${buildingId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        if (response.ok) {
+            showToast("删除成功")
+// 获取 Modal 元素
+            const modalElem = document.querySelector("#buildingDetailModal");
+
+// 获取或创建 Bootstrap 实例
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElem);
+
+// 执行关闭
+            modalInstance.hide();
+
+        } else {
+            const err = await response.json();
+            alert("删除失败: " + err.detail);
+        }
+        await loadBuildings()
+    }
+
+    async function upgradeBuilding(buildingId) {
+        // 升级
+        const response = await fetch(`/api/buildings/upgrade/${buildingId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        if (response.ok) {
+            alert("升级成功！");
+
+        } else {
+            const err = await response.json();
+            alert("升级失败: " + err.detail);
+        }
+        await loadBuildings()
+    }
+
+    document.querySelector("#buildingDetailModal").addEventListener("show.bs.modal", onModalShow);
+
+    // 定义具名函数以便移除
+    async function onModalShow(event) {
+        // 1. 获取点击的按钮
+        const button = event.relatedTarget;
+        // 2. 提取 data-id (这就是建筑实例 ID)
+        const player_building_id = parseInt(button.getAttribute('data-id'));
+
+        playerBuilding = playerBuildingInstances.find(p => p.id === player_building_id)
+        levels = window.gameData.buildings.find(b => b.id === playerBuilding.building_meta_id).levels;
+        productionRate = levels.find(l => l.level === playerBuilding.level).production_rate
+
+        document.querySelector("#upgrade-building-btn").setAttribute("data-id", player_building_id)
+        document.querySelector("#remove-building-btn").setAttribute("data-id", player_building_id)
+
+        // 3. 从全局数据中查找该实例和它的元数据
+        const res = await fetch("/api/buildings/");
+        const data = await res.json(); // 再次 await 以解析数据
+        const instance = data.find(pb => pb.id === player_building_id);
+        console.log(instance)
+        // 找到该实例对应的建筑类型元数据
+        const building_meta = window.gameData.buildings.find(b => b.id === instance.building_meta_id);
+        if (!building_meta) return;
+
+        // --- 填充左侧：建筑详情 ---
+        document.querySelector("#current-rate").innerText =  (productionRate * 100).toFixed(2) + "%";
+        document.getElementById('det-name').textContent = building_meta.name;
+        document.getElementById('det-level').textContent = instance.level || 99;
+        document.getElementById('det-icon').innerHTML = `<i class="${building_meta.icon} me-2"></i>` || '🏗️';
+        document.querySelector("#upgrade-cost").innerText = `$${building_meta.levels.find(l => l.level === instance.level + 1).cost}`
+        // 计算维护成本 (假设每级增加 50%)
+        const maintenanceSection = document.querySelector('#det-icon').nextElementSibling;
+        maintenanceSection.innerHTML = `
+        <div class="fw-bold">使用成本 /小时</div>
+        <div class="text-danger">-$${building_meta.maintenance_cost || 0}/hr</div>
+    `;
+        // 进行中的任务列表
+        await refreshTaskDisplay(player_building_id);
+        // --- 填充右侧：生产列表 ---
+        renderProductionList(building_meta.id, player_building_id);
+    }
+
+    async function handleTaskComplete(playerBuildingId) {
+        const response = await fetch(`/api/task/claim/${playerBuildingId}`);
+        const data = await response.json()
+        showToast(data.msg)
+        await refreshTaskDisplay(playerBuildingId)
+        await loadBuildings()
+    }
+
+    //
+    async function refreshTaskDisplay(playerBuildingId) {
+        try {
+            // 找到你刚才定义的容器 (假设 ID 为 task-container)
+            const container = document.querySelector('#building-task-container');
+            // 1. 从你的 FastAPI CRUD 接口请求数据
+            const response = await fetch(`/api/task/${playerBuildingId}`);
+            if (response.status != 200) {
+                container.innerHTML = '<span class="text-muted small">当前无进行中任务</span>';
+                return;
+            }
+            const task = await response.json();
+
+            if (!task) {
+                container.innerHTML = '<span class="text-muted small">当前无进行中任务</span>';
+                return;
+            }
+
+            // 3. 数学计算：进度百分比
+            const now = new Date().getTime();
+            const start = new Date(task.start_time).getTime();
+            const end = new Date(task.end_time).getTime();
+            const total = end - start;
+            const elapsed = now - start;
+            const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
+
+            // 计算剩余秒数
+            const remainingSec = Math.max(0, Math.floor((end - now) / 1000));
+
+            // 4. 填充 HTML (使用你刚才那一行的结构)
+            const resource = window.gameData.resources.find(r => r.id == task.resource_id)
+            container.innerHTML = `
+            <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold small">
+                     ${renderIcon(resource.icon)}
+                     ${resource.name}
+                     <span>${task.task_type === 'upgrade' ? '建筑升级' : '生产中'}</span>
+                </span>
+
+                ${remainingSec > 0
+                ? `
+                        <!-- 情况 A：未完成，显示倒计时勋章 -->
+                        <span class="badge rounded-pill bg-light text-primary border small">
+                            ${formatTime(remainingSec)}
+                        </span>
+                      `
+                : `
+                        <!-- 情况 B：已完成，显示领取按钮 -->
+                        <button
+                            class="btn btn-primary btn-sm rounded-pill px-3 py-0"
+                            style="font-size: 0.75rem;"
+                            onclick="handleTaskComplete(${playerBuildingId})">
+                            领取奖励
+                        </button>
+                      `
+            }
+                </div>
+
+                <div class="progress" style="height: 6px;">
+                    <div class="progress-bar progress-bar-striped ${remainingSec > 0 ? 'progress-bar-animated' : ''} bg-success"
+                         role="progressbar"
+                         style="width: ${progress}%"></div>
+                </div>
+                <div class="d-flex justify-content-between mt-1" style="font-size: 0.75rem;">
+                    <span class="text-muted">产出: <strong class="text-dark">+${task.quantity}</strong></span>
+                    <span class="text-muted">进度: <span>${Math.floor(progress)}</span>%</span>
+                </div>
+            </div>
+        `;
+
+            // 5. 如果任务刚完成，可以触发一次自动结算（或者显示领取按钮）
+            if (remainingSec === 0) {
+                console.log("检测到任务完成，等待玩家领取...");
+            }
+
+        } catch (error) {
+            console.error("无法获取任务状态:", error);
+        }
+    }
+
+    /**
+     * 渲染生产列表 (配合 gameData)
+     */
+    function renderProductionList(buildingMetaId, playerBuildingId) {
+        const container = document.getElementById('production-list-container');
+        const recipes = window.gameData.recipes.filter(r => r.building_meta_id === buildingMetaId);
+
+        if (!recipes || recipes.length === 0) {
+            container.innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">此建筑目前无可生产方案</td></tr>';
+            return;
+        }
+
+        container.innerHTML = recipes.map(recipe => {
+            const outputRes = window.gameData.resources.find(r => r.id === recipe.output.id);
+            const perHr = recipe.per_hour; // 每小时产出基数
+
+            return `
+            <tr class="align-middle" data-recipe-id="${recipe.id}">
+                <td class="py-3" style="width: 25%;">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                            <span class="fs-4">${renderIcon(outputRes.icon)}</span>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">${outputRes.name}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">
+                                生产速率: <span id="production-rate" >${parseFloat(recipe.per_hour * productionRate).toFixed(2)}</span>  / 小时
+                            </div>
+                        </div>
+                    </div>
+                </td>
+
+                <td style="width: 30%;">
+                    <div id="recipe-materials-${recipe.id}" class="d-flex flex-column gap-1">
+                        </div>
+                </td>
+
+                <td style="width: 25%;">
+                    <div class="px-2">
+                        <div class="input-group input-group-sm mb-2 shadow-sm">
+                            <span class="input-group-text bg-light">时长</span>
+                            <input type="number" class="form-control text-center fw-bold"
+                                   id="hr-input-${recipe.id}"
+                                   oninput="updatePreview(${recipe.id})"
+                                   value="0"
+                                   min="0"
+                             >
+                            <span class="input-group-text bg-light">小时</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center bg-light rounded px-2 py-1">
+                            <small class="text-muted">预计总产出:</small>
+                            <strong class="text-primary fs-5" id="preview-qty-${recipe.id}" ">0</strong>
+                        </div>
+                    </div>
+                </td>
+
+                <td style="width: 20%;" class="text-end">
+                    <button class="btn btn-primary w-100 shadow-sm fw-bold py-2"
+                            id="btn-start-${recipe.id}"
+                            onclick="executeStartProduction(${recipe.id}, ${playerBuildingId})"
+                            data-bs-dismiss="modal"
+                            >
+                        开始生产
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // 初始执行一次预览更新，填充材料和数量
+        recipes.forEach(r => updatePreview(r.id));
+    }
+
+    async function updatePreview(recipeId) {
+        const recipe = window.gameData.recipes.find(r => r.id === recipeId);
+        const hours = parseFloat(document.getElementById(`hr-input-${recipeId}`).value) || 0;
+
+        // 1. 计算产出
+        const perHr = recipe.per_hour;
+        const production_rate = parseFloat(document.querySelector("#production-rate").textContent).toFixed(2)
+        const totalOutput = Math.floor(hours * production_rate);
+        document.getElementById(`preview-qty-${recipeId}`).innerText = totalOutput.toLocaleString();
+
+        // 2. 计算并渲染材料需求
+        const materialContainer = document.getElementById(`recipe-materials-${recipeId}`);
+        const startBtn = document.getElementById(`btn-start-${recipeId}`);
+        let canAfford = true;
+        const resp = await fetch(`/api/inventory/`);
+        const playerInventory = await resp.json()
+
+        materialContainer.innerHTML = recipe.inputs.map((input) => {
+            const res = window.gameData.resources.find(r => r.id === input.resource_id);
+            const totalNeeded = Math.ceil(perHr * hours * input.quantity);
+            const item = playerInventory.find(r => r.resource_id === input.resource_id)
+            const currentStock = item ? item['quantity'] : 0
+            const isShortage = currentStock < totalNeeded;
+
+            if (isShortage) canAfford = false;
+
+            return `
+            <div class="d-flex justify-content-between align-items-center p-1 rounded ${isShortage ? 'bg-danger bg-opacity-10' : 'bg-light'}"
+                 style="font-size: 0.85rem;">
+                <span class="${isShortage ? 'text-danger fw-bold' : 'text-dark'}">
+                    ${renderIcon(res.icon)} ${res.name}
+                </span>
+                <span class="small">
+                    <span class="${isShortage ? 'text-danger fw-bold' : 'text-muted'}">${totalNeeded}</span>
+                    <span class="text-secondary">/ 库存:${currentStock}</span>
+                </span>
+            </div>
+        `;
+        }).join('');
+
+        // 3. 自动禁用按钮（如果库存不足）
+        if (!canAfford) {
+            startBtn.classList.add('disabled');
+            startBtn.innerText = '库存不足';
+        } else {
+            startBtn.classList.remove('disabled');
+            startBtn.innerText = '开始生产';
+        }
+    }
+
+    /**
+     * 触发建筑生产任务
+     * @param recipeId
+     * @param playerBuildingId
+     */
+    async function executeStartProduction(recipeId, playerBuildingId) {
+        const recipe = window.gameData.recipes.find(recipe => recipe.id === recipeId);
+
+        // 1. 构造符合 BuildingTaskCreate Schema 的数据
+        const now = new Date();
+        const hours = parseFloat(document.querySelector(`#hr-input-${recipe.id}`).value);
+
+        const quantity = parseInt(hours * recipe.per_hour)
+
+        const taskData = {
+            player_building_id: playerBuildingId,
+            resource_id: recipe.output.id,
+            quantity: quantity,
+            start_time: now.toISOString(),
+        };
+
+        try {
+            // 2. 发送请求到 FastAPI 接口
+            const response = await fetch('/api/task/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '生产启动失败');
+            }
+        } catch (error) {
+            console.error("生产错误:", error);
+        }
+        await loadBuildings()
+
+    }
+</script>

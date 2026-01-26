@@ -11,11 +11,13 @@ def generate_building_config(b_type, base_gold, base_duration):
         # 指数增长公式：下一级费用 = 基础费用 * (1.5 ^ (lv-1))
         gold_cost = int(base_gold * (1.8 ** (lv - 1)))
         duration = int (base_duration * (1.8 ** (lv - 1)))
+        production_rate = round(1.8 ** (lv - 1), 2)
         levels.append({
             "building_meta_id": b_type,
             "level": lv,
             "cost": 0 if lv == 1 else gold_cost,
-            "duration": 0 if lv == 1 else duration
+            "duration": 0 if lv == 1 else duration,
+            "production_rate": production_rate,
         })
     return levels
 
@@ -39,4 +41,5 @@ def save_configs_to_db(configs):
             session.rollback()
             print(f"导入失败: {e}")
 if __name__ == "__main__":
+    print(all_configs)
     save_configs_to_db(all_configs)

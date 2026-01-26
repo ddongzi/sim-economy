@@ -1,22 +1,18 @@
-# app/core/config.py
-"""
-全局对象
-"""
-from fastapi.templating import Jinja2Templates
 import os
+from dotenv import load_dotenv
+from fastapi.templating import Jinja2Templates
 
-# 获取项目根目录的绝对路径，确保在不同目录下运行都不会找不到 templates 文件夹
+# 加载 .env 文件中的变量
+load_dotenv()
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 templates_path = os.path.join(BASE_DIR, "app/templates")
-
-# 实例化一次
 templates = Jinja2Templates(directory=templates_path)
 
-DATABASE_URL = "postgresql+psycopg://postgres:123456@localhost:5432/simecon"
+# 从环境变量中读取，如果读不到则使用默认值
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+GAME_DATA_VERSION = os.getenv("GAME_DATA_VERSION", "20260126_01")
+# 注意：环境变量读取出来都是字符串，如果是数字需要转换
+INITIAL_CASH = int(os.getenv("INITIAL_CASH", 5000))
 
-GAME_DATA_VERSION = "20240112_02"
-
-# 不可修改！！！
 GOVERNMENT_PLAYER_ID = 0
-
-INITIAL_CASH = 9999

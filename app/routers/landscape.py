@@ -14,8 +14,7 @@ router = APIRouter()
 async def landscape(request: Request,
                     response: HTMLResponse, session:SessionDep,
                     player_in: PlayerPublic = Depends(get_current_user), ):
-    print(player_in)
-    buildings = crud_building.get_player_buildings(session, player_in.id)
+
     return templates.TemplateResponse(
         "landscape.html",
         {

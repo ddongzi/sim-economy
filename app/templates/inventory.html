@@ -39,11 +39,8 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex gap-2 mb-4 overflow-auto pb-2">
-                        <button class="btn btn-sm btn-outline-primary active">全部</button>
-                        <button class="btn btn-sm btn-outline-secondary">能源</button>
-                        <button class="btn btn-sm btn-outline-secondary">农业</button>
-                        <button class="btn btn-sm btn-outline-secondary">半导体</button>
+                    <div class="d-flex gap-2 mb-4 overflow-auto pb-2" id="inventory-container-category">
+
                     </div>
 
                     <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3" id="inventory-container">
@@ -100,55 +97,101 @@
 </div>
 {% endblock %}
 {% block scripts %}
+
+
 <script>
+    let inventoryData;
+
+    /**
+     * 渲染库存
+     * @param {number|string} filterId - 当前选中的分类 ID，默认 "all"
+     */
+    async  function renderInventory(filterId = "all") {
+        await window.gameDataPromise
+        // 1. 获取数据（假设 window.inventoryData 已经从 localStorage 加载）
+        const industries = window.gameData.industries; // 结构: [{id: 1, name: "能源"}, {id: 2, name: "农业"}]
+        const inventory = inventoryData;       // 结构: [{resourceId: 101, industryId: 1, amount: 500}, ...]
+
+        const categoryContainer = document.getElementById('inventory-container-category');
+        const itemContainer = document.getElementById('inventory-container');
+
+        // 2. 渲染分类导航按钮
+        // 生成“全部”按钮 + 基于 Industries 数组生成的按钮
+        const categoryHtml = [`
+        <button class="btn btn-sm ${filterId === 'all' ? 'btn-outline-primary active' : 'btn-outline-secondary'}"
+                onclick="renderInventory('all')">全部</button>
+    `];
+
+        industries.forEach(ind => {
+            const isActive = String(ind.id) === String(filterId);
+            categoryHtml.push(`
+            <button class="btn btn-sm ${isActive ? 'btn-outline-primary active' : 'btn-outline-secondary'}"
+                    onclick="renderInventory('${ind.id}')">${ind.name}</button>
+        `);
+        });
+        categoryContainer.innerHTML = categoryHtml.join('');
+
+        // 3. 过滤库存数据
+        const filteredItems = filterId === "all"
+            ? inventory
+            : inventory.filter(item => {
+                const resource = window.gameData.resources.find(r=>r.id === item.resource_id)
+                return  resource.industry_id === filterId
+            });
+        console.log("filter", filteredItems)
+        // 4. 渲染物品列表
+        if (filteredItems.length === 0) {
+            itemContainer.innerHTML = `<div class="col-12 text-center text-muted py-5">该分类下暂无资源</div>`;
+            return;
+        }
+
+        itemContainer.innerHTML = filteredItems.map(item => {
+            const resource = window.gameData.resources.find(r=>r.id === item.resource_id)
+return `
+<div class="col">
+    <div class="card h-100 text-center shadow-sm">
+
+        <div class="card-body d-flex flex-column justify-content-center p-2">
+            <div class="fs-3 mb-1">
+                ${renderIcon(resource.icon)}
+            </div>
+
+            <div class="small text-muted text-truncate">
+                ${resource.name || '未命名'}
+            </div>
+
+            <div class="mt-1 small fw-semibold">
+                x${item.quantity}
+            </div>
+        </div>
+
+    </div>
+</div>
+`;
+
+
+
+        }).join('');
+    }
+
     /**
      * 获取并刷新仓库资源展示
      */
-    async function fetchAndRenderInventory() {
+    async function fetchInventory() {
         try {
             const response = await fetch(`/api/inventory`);
-            const inventoryData = await response.json(); // 结构类似: [{resource_id: 1, quantity: 1240500}, ...]
-            console.log(inventoryData)
-            const container = document.getElementById('inventory-container');
-            if (!container) return;
-            console.log(container)
-
-            // 清空现有内容
-            container.innerHTML = '';
-
-            inventoryData.forEach(item => {
-                const resource = window.gameData.resources.find(r => r.id === item.resource_id)
-                // 数学处理：大数字格式化 (例如 1,240,500)
-                const formattedQty = item.quantity.toLocaleString();
-
-                const cardHtml = `
-                <div class="col">
-                    <div class="card h-100 resource-tile shadow-sm border-0 bg-white"
-                         style="transition: transform 0.2s;"
-                         onmouseover="this.style.transform='translateY(-5px)'"
-                         onmouseout="this.style.transform='translateY(0)'">
-                        <div class="card-body text-center p-3">
-                            <div class="resource-icon mb-2">
-                                <i class="bi ${resource.icon}  fs-1"></i>
-                            </div>
-                            <div class="fw-bold small text-truncate text-muted">${resource.name}</div>
-                            <div class="text-primary fw-bold fs-5">${formattedQty}</div>
-                            <span class="badge bg-light text-dark mt-2 border">Q${item.resource_id}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-                container.insertAdjacentHTML('beforeend', cardHtml);
-            });
-
+            inventoryData = await response.json(); // 结构类似: [{resource_id: 1, quantity: 1240500}, ...]
         } catch (error) {
             console.error("仓库数据加载失败:", error);
         }
     }
-   console.log("脚本块加载成功"); // 第一行先打印
-        // 推荐写法
-    document.addEventListener('DOMContentLoaded', async () =>  {
-        await fetchAndRenderInventory();
+
+    // 推荐写法
+    document.addEventListener('DOMContentLoaded', async () => {
+        const data = await window.gameDataPromise
+        console.log("jjj",data)
+        await fetchInventory()
+        await renderInventory();
     });
 
 </script>

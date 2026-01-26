@@ -24,7 +24,7 @@ def economic(session: SessionDep):
     active_orders_count = crud_market.count_active_orders(session)  # 挂单总数
 
     # 3. 生产力维度 (社会总财富估计)
-    # 计算逻辑：所有 Inventory 数量 * 该资源基础价格/市场均价
+    # 所有 Inventory 数量 * 该资源基础价格/市场均价
     total_inventory_value = crud_inventory.get_all_assets_value(session)
 
     return {
@@ -32,7 +32,7 @@ def economic(session: SessionDep):
         "m1": m0_cash + locked_cash,
         "market_volume_24h": daily_volume,
         "active_orders": active_orders_count,
-        "total_assets_value": total_inventory_value,
+        "total_assets_value": m0_cash + locked_cash  +total_inventory_value,
         "cpi": calculate_cpi(session),  # 物价指数
         "timestamp": datetime.utcnow(),
         "history": {

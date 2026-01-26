@@ -113,65 +113,11 @@
 
     {% block content %}{% endblock %}
 </div>
-<div class="toast-container position-fixed top-0 end-0 p-3">
-    <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-            <strong class="me-auto" id="toastTitle">系统通知</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body" id="toastMessage">
-        </div>
-    </div>
-</div>
+{% include 'components/toast.html' %}
+
 <script src="/app/static/js/global.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-     /**
-     *  图标渲染函数
-     * @param {string} iconName - 图标类名或标识符
-     * @param {string} defaultIcon - 缺省时显示的 Emoji 或类名
-     * @returns {string} - 完整的 HTML 字符串
-     */
-    function renderIcon(iconName, defaultIcon = '🏗️') {
-        // 如果没有传入 iconName，直接返回默认值
-        if (!iconName || iconName.trim() === "") {
-            return `<span>${defaultIcon}</span>`;
-        }
 
-        // 如果 iconName 看起来像类名（不包含 HTML 标签），则封装成 <i>
-        // 逻辑：如果 iconName 里有 'bi-' 或 'fa-'，判定为图标库类名
-        if (iconName.includes('bi-') || iconName.includes('fa-')) {
-            return `<i class="${iconName} me-2"></i>`;
-        }
-
-        // 否则，它可能本身就是一个 Emoji
-        return `<span class="me-2">${iconName}</span>`;
-    }
-
-</script>
-<script>
-    // 通用 Toast 显示函数
-    function showToast(message, type = 'success') {
-        const toastEl = document.getElementById('liveToast');
-        const toastMessage = document.getElementById('toastMessage');
-        const toastTitle = document.getElementById('toastTitle');
-
-        // 设置颜色主题
-        toastEl.classList.remove('bg-success', 'bg-danger', 'text-white');
-        if (type === 'success') {
-            toastEl.classList.add('bg-success', 'text-white');
-            toastTitle.innerText = '成功';
-        } else {
-            toastEl.classList.add('bg-danger', 'text-white');
-            toastTitle.innerText = '错误';
-        }
-
-        toastMessage.innerText = message;
-
-        const toast = new bootstrap.Toast(toastEl);
-        toast.show();
-    }
-</script>
 {% block scripts %}{% endblock %}        <!-- 4. 最后执行子页面 JS -->
 </body>
 </html>

@@ -3,6 +3,9 @@ from app.db.session import SessionDep
 from app.models import Player, TransactionLog,Inventory
 from sqlmodel import select
 import logging
+
+from app.service.ws import manager
+
 logger = logging.getLogger(__name__)
 class InventoryService:
     """ 库存 """
@@ -32,3 +35,12 @@ class InventoryService:
         session.add(db_inventory)
         session.flush()
         logger.info("change cash: ", db_inventory)
+
+    async def send_notify(self, message: str):
+        """ 库存更新通知 """
+
+        pass
+
+
+inventory_service = InventoryService()
+manager.register("inventory", inventory_service)

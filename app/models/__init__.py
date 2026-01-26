@@ -52,6 +52,9 @@ class Resource(ResourceBase, table=True):
     icon: str = Field(default="bi-box")
     industry_id: str = Field(default=0, foreign_key="industry.id", nullable=True)
 
+    base_weight: float = Field(default=1, nullable=True)
+    sensitivity: float = Field(default=0, nullable=True)
+
 class ResourceCreate(ResourceBase):
     name: str
     base_price: int
@@ -59,7 +62,7 @@ class ResourceCreate(ResourceBase):
 class ResourcePublic(ResourceBase):
     id:int
     icon:str
-
+    industry_id: str
 
 class Plot(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
@@ -137,8 +140,14 @@ class BuildingMeta(BuildingMetaBase, table=True):
     description: str = Field(default="")
     icon: str = Field(default="bi-box")
 
+    levels: List[BuildingLevelsConfig] = Relationship(back_populates="building_meta")
+
 class BuildingMetaPublic(BuildingMetaBase):
     icon:str
+class BuildingMetaDetail(BuildingMetaBase):
+    icon:str
+    levels: List[BuildingLevelsConfig]
+
 class BuildingMetaCreate(BuildingMetaBase):
     pass
 
@@ -348,8 +357,9 @@ class BuildingLevelsConfig(SQLModel, table=True):
     level: int = Field(description="升级到这个级别")
     cost: float = Field(default=0)
     duration: int = Field(default=0, description="升级耗时 秒")
+    production_rate: float = Field(default=0, description="生产速率提升", nullable=True)
 
-
+    building_meta: BuildingMeta = Relationship()
 
 
 

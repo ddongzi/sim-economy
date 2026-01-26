@@ -42,7 +42,8 @@ class ProducerBot(BaseBot):
         """ 尝试建造12个playerbuilding """
         for i in range(12):
             await self.client.post(f"/api/buildings/construct", json={
-                "building_meta_id": self.building_meta_id
+                "building_meta_id": self.building_meta_id,
+                "slot_number": i,
             })
         pass
 

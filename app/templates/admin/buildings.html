@@ -281,6 +281,8 @@
 
 </script>
 
+
+
 <script>
 
     /**
@@ -354,7 +356,7 @@
 
             const result = response.ok ? await response.json() : [];
             // 假设后端返回结构是 { status: "success", data: [...] }
-            console.log(result)
+            playerBuildingInstances = result
             renderBuildingTable(result);
 
         } catch (error) {

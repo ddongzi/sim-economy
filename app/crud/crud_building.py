@@ -79,7 +79,6 @@ def delete_player_building(session: SessionDep, building_id: int) -> None:
     building = session.get(PlayerBuilding, building_id)
     if building:
         session.delete(building)
-        session.commit()
 
 
 def get_all_building_tasks(session: SessionDep) -> List[BuildingTask]:
