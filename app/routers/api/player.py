@@ -45,8 +45,11 @@ async def login(
 ):
     # 简单的登录逻辑：匹配用户名（实际项目中应加入密码验证）
     player = crud_player.get_player_by_name(session, name=player_in.name)
+
     if not player:
         raise HTTPException(status_code=404, detail="玩家不存在")
+    if player.password != player_in.password:
+        raise HTTPException(status_code=400, detail="登录信息错误")
 
     # 将 player_id 写入 Cookie
     # 生成 Token

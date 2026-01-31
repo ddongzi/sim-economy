@@ -11,7 +11,7 @@ templates = Jinja2Templates(directory=templates_path)
 
 # 从环境变量中读取，如果读不到则使用默认值
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
-GAME_DATA_VERSION = os.getenv("GAME_DATA_VERSION", "20260126_01")
+GAME_DATA_VERSION = os.getenv("GAME_DATA_VERSION", "19970101")
 # 注意：环境变量读取出来都是字符串，如果是数字需要转换
 INITIAL_CASH = int(os.getenv("INITIAL_CASH", 5000))
 

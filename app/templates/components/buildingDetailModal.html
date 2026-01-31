@@ -138,6 +138,7 @@
 
     // 定义具名函数以便移除
     async function onModalShow(event) {
+
         // 1. 获取点击的按钮
         const button = event.relatedTarget;
         // 2. 提取 data-id (这就是建筑实例 ID)
@@ -192,8 +193,10 @@
             const container = document.querySelector('#building-task-container');
             // 1. 从你的 FastAPI CRUD 接口请求数据
             const response = await fetch(`/api/task/${playerBuildingId}`);
-            if (response.status != 200) {
+            if (response.status !== 200) {
                 container.innerHTML = '<span class="text-muted small">当前无进行中任务</span>';
+                const data = await response.text()
+                console.error(data)
                 return;
             }
             const task = await response.json();
@@ -312,6 +315,7 @@
                                    oninput="updatePreview(${recipe.id})"
                                    value="0"
                                    min="0"
+                                   max="48"
                              >
                             <span class="input-group-text bg-light">小时</span>
                         </div>
@@ -339,18 +343,21 @@
     }
 
     async function updatePreview(recipeId) {
+        // tr
+        const trElement = document.querySelector(`tr[data-recipe-id="${recipeId}"]`);
         const recipe = window.gameData.recipes.find(r => r.id === recipeId);
-        const hours = parseFloat(document.getElementById(`hr-input-${recipeId}`).value) || 0;
+        const hours = parseFloat(trElement.querySelector(`#hr-input-${recipeId}`).value) || 0;
 
         // 1. 计算产出
         const perHr = recipe.per_hour;
-        const production_rate = parseFloat(document.querySelector("#production-rate").textContent).toFixed(2)
+        const production_rate = parseFloat(trElement.querySelector("#production-rate").textContent).toFixed(2)
         const totalOutput = Math.floor(hours * production_rate);
-        document.getElementById(`preview-qty-${recipeId}`).innerText = totalOutput.toLocaleString();
+        console.log("render out: ", production_rate, hours, totalOutput)
+        trElement.querySelector(`#preview-qty-${recipeId}`).innerText = totalOutput.toLocaleString();
 
         // 2. 计算并渲染材料需求
-        const materialContainer = document.getElementById(`recipe-materials-${recipeId}`);
-        const startBtn = document.getElementById(`btn-start-${recipeId}`);
+        const materialContainer = trElement.querySelector(`#recipe-materials-${recipeId}`);
+        const startBtn = trElement.querySelector(`#btn-start-${recipeId}`);
         let canAfford = true;
         const resp = await fetch(`/api/inventory/`);
         const playerInventory = await resp.json()

@@ -9,8 +9,6 @@ def create_resource(session: SessionDep, resource_in: ResourceCreate) -> Resourc
     # 将 Schema 转换为 Model
     db_obj = Resource.model_validate(resource_in)
     session.add(db_obj)
-    session.commit()
-    session.refresh(db_obj)
     return db_obj
 
 

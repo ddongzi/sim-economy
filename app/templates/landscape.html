@@ -9,10 +9,9 @@
         grid-template-rows: repeat(4, 1fr);
         gap: 15px;
         padding: 15px;
-        /* 核心点：高度计算减去顶部 Navbar 即可 */
-        height: calc(100vh - 60px);
-        width: 100%;
+
     }
+
 
     /* 单个地块样式 */
     .plot-card {
@@ -91,7 +90,7 @@
     }
 </style>
 
-<div class="game-grid" id="building-container">
+<div class="game-grid h-100  flex-grow-1 " id="building-container">
     {% for i in range(16) %}
     <div class="plot-card plot-empty">
         <div class="h1 text-muted">+</div>
@@ -114,23 +113,16 @@ let playerBuildingInstances = null;
         try {
             // 1. 调用你的异步 API
             const response = await fetch('/api/buildings');
-            const data = await response.json(); // 假设返回 { buildings: [...] }
-            const buildings = data || [];
-            playerBuildingInstances = data
-
+            playerBuildingInstances = await response.json(); // 假设返回 { buildings: [...] }
+            console.log("instances : ",playerBuildingInstances)
             const totalSlots = 16;
 
-            // 1. 将数组转换为索引 Map，方便 O(1) 时间查找
-            // 这样你就不用在循环里嵌套循环了
-            const buildingMap = {};
-            buildings.forEach(b => {
-                buildingMap[b.slot_number] = b;
-            });
             // 清空容器（移除占位符）
             container.innerHTML = '';
 
             for (let i = 0; i < totalSlots; i++) {
-                const building = buildingMap[i]; // 假设 API 返回的是带索引的数组或你可以按需分配
+                const building = playerBuildingInstances.find(b => b.slot_number === i); // 假设 API 返回的是带索引的数组或你可以按需分配
+
                 const card = document.createElement('div');
 
                 if (building) {
@@ -141,6 +133,7 @@ let playerBuildingInstances = null;
                     card.setAttribute('data-id', building.id)
                     card.setAttribute('data-slot-num', i)
                     const now = Date.now() ;
+                    console.log("building : ", i, building)
                     if (building.task) {
                         const end_time = new Date(building.task.end_time).getTime();
                         card.innerHTML += `

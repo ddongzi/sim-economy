@@ -21,8 +21,9 @@ def generate_building_config(b_type, base_gold, base_duration):
         })
     return levels
 
+
 all_configs = []
-for b in ["farm_", "mine_plant_", "water_", "power_plant_", "house_assembly_plant_"]:
+for b in ["farm_", "mine_plant_", "water_", "power_plant_", "house_assembly_plant_","flour_mill_","bakery_","steel_mill_"]:
     all_configs.extend(generate_building_config(b, 500, 60 * 30))
 
 def save_configs_to_db(configs):

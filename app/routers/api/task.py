@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import defer
 
-from app.core.error import GameRespCode
+from app.core.error import GameRespCode, GameError
 from app.db.session import SessionDep
 from app.dependencies import get_current_user
 from datetime import datetime, timedelta
@@ -11,7 +11,8 @@ from app.models import PlayerPublic, BuildingTaskCreate, BuildingTaskBase, Trans
 from app.service.accounting import AccountingService
 from app.service.inventory import InventoryService
 from app.service.playerService import playerService
-
+import logging
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -27,6 +28,7 @@ async def product(session: SessionDep, building_task: BuildingTaskCreate,
             raise HTTPException(status_code=400, detail=GameRespCode.TASK_NOT_CLAIM.detail)
         else:
             raise HTTPException(status_code=400, detail=GameRespCode.BUILDING_BUSY.detail)
+    # 计算时间成本
     calculate_task_cost(session, building_task)
 
     recipe = crud_recipe.get_recipe_by_output_resource_id(session, building_task.resource_id)
@@ -34,31 +36,40 @@ async def product(session: SessionDep, building_task: BuildingTaskCreate,
         raise HTTPException(status_code=400, detail="异常：找不到配方信息")
     hours = building_task.quantity / recipe.per_hour
 
-    # 创建任务
-    task = crud_building_task.create_building_task(session, building_task, player_id=player_in.id, duration=hours)
-    session.flush()
-    # 扣除成本
-    AccountingService.change_cash(session, player_in.id, -building_task.cash_cost,
-                                  TransactionActionType.PRODUCE_COST, task.id)
-    # 扣除库存？？
-    for input in recipe.inputs:
-        InventoryService.change_resource(session, player_in.id, input.resource_id,
-                                        -input.quantity * building_task.quantity)
-    session.commit()
-    player = crud_player.get_player_by_id(session, player_in.id)
-    await playerService.send_update_cash(player_in.name, player.cash)
+    try:
+        # 创建任务
+        task = crud_building_task.create_building_task(session, building_task, player_id=player_in.id, duration=hours)
+        session.flush()
+        # 扣除成本
+        AccountingService.change_cash(session, player_in.id, -building_task.cash_cost,
+                                      TransactionActionType.PRODUCE_COST, task.id)
+        # 扣除库存
+        for input in recipe.inputs:
+            InventoryService.change_resource(session, player_in.id, input.resource_id,
+                                             -input.quantity * building_task.quantity)
+        session.commit()
+        player = crud_player.get_player_by_id(session, player_in.id)
+        await playerService.send_update_cash(player_in.name, player.cash)
+    except GameError as e:
+        session.rollback()
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=e.message)
+    except Exception as e:
+        session.rollback()
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))
+
     return {"msg": "建筑任务创建成功"}
 
 
 @router.get("/{player_building_id}")
 async def get_task(session: SessionDep, player_building_id: int,
                    player_in: PlayerPublic = Depends(get_current_user), ):
-    """返回任务, 如果已完成则返回None。"""
+    """返回任务"""
     task = crud_building_task.get_building_task_by_player_building_id(session, player_building_id)
     if not task:
-        raise HTTPException(status_code=400, detail= GameRespCode.BUILDING_IDLE.detail)
+        raise HTTPException(status_code=400, detail=GameRespCode.BUILDING_IDLE.detail)
     return task
-
 
 @router.get("/claim/{player_building_id}")
 async def claim_task(session: SessionDep, player_building_id: int,
@@ -67,15 +78,19 @@ async def claim_task(session: SessionDep, player_building_id: int,
     """ 对任务领取 """
     task = crud_building_task.get_building_task_by_player_building_id(session, player_building_id)
     if not task:
-        return {"msg": "建筑没有任务"}
+        raise HTTPException(status_code=400, detail=GameRespCode.BUILDING_IDLE.detail)
     if task.end_time > datetime.now():
-        return {"msg": "任务在进行中"}
+        raise HTTPException(status_code=400, detail=GameRespCode.BUILDING_BUSY.detail)
     else:
         # 任务已经完成，但还没有领取
-        InventoryService.change_resource(session, player_in.id, task.resource_id, task.quantity)
-        crud_building_task.remove_building_task(session, task.id)
-        session.commit()
-
+        try:
+            InventoryService.change_resource(session, player_in.id, task.resource_id, task.quantity)
+            crud_building_task.remove_building_task(session, task.id)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.error(e)
+            raise HTTPException(status_code=400, detail=str(e))
         return {"msg": "领取成功，库存已经更新"}
 
 

@@ -62,6 +62,6 @@ def consume_resource(session: SessionDep, player_id: int, resource_id: int, amou
 def get_all_assets_value(session: SessionDep):
     """ 仓库内资源总价值，以base_price计算"""
     statement = select(func.sum(Inventory.quantity * Resource.base_price)
-                       ).join(Resource, Inventory.resource_id == Resource.id)
+                       ).join(Resource, Inventory.resource_id == Resource.id).where(Inventory.player_id != 0)
     result = session.exec(statement).one()
     return int(result or 0)

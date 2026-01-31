@@ -7,10 +7,10 @@ class GameWS {
     }
 
     // --- 统一的发送方法 ---
-    send(type, subType, payload = {}) {
+    send(type, sub_type, payload = {}) {
         const message = JSON.stringify({
             type: type,
-            sub_type: subType,
+            sub_type: sub_type,
             data: payload,
             timestamp: Date.now()
         });
@@ -164,7 +164,12 @@ function showToast(message, type = 'success') {
     toast.show();
 }
 
-function formatValue(value) {
+/**
+ * 金钱
+ * @param value
+ * @returns {string}
+ */
+function formatCashValue(value) {
     if (value >= 100000000) {
         return (value / 100000000).toFixed(2) + ' 亿';
     } else if (value >= 10000) {
@@ -172,5 +177,78 @@ function formatValue(value) {
     }
     return value.toLocaleString(); // 加上逗号分隔
 }
+
+function formatQuantity(val) {
+    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+    return val.toString(); // 数量较小时不加逗号，保持紧凑
+}
+
+/**
+ * 通用指标更新器
+ * @param {string} idPrefix  HTML元素ID的前缀 (如 'gini', 'm0')
+ * @param {number} current   当前值
+ * @param {number} total     总值 (用于计算进度条百分比，若本身就是百分比则传1)
+ * @param {number} precision 保留小数位数
+ */
+function updateMetric(idPrefix, current, total, precision = 2) {
+    const ratio = total === 0 ? 0 : current / total;
+    const percentage = (Math.min(ratio, 1) * 100).toFixed(1) + '%';
+
+    // 1. 更新数值文字
+    const valElem = document.getElementById(`${idPrefix}-val`);
+    if (valElem) {
+        valElem.innerText = current.toLocaleString(undefined, {
+            minimumFractionDigits: precision,
+            maximumFractionDigits: precision
+        });
+    }
+
+    // 2. 更新进度条宽度
+    const barElem = document.getElementById(`${idPrefix}-bar`);
+    if (barElem) {
+        barElem.style.width = percentage;
+
+        // 3. 可选：根据阈值自动切换颜色 (以基尼指数或流动性为例)
+        if (idPrefix === 'gini') {
+            barElem.className = 'progress-bar ' + (ratio > 0.6 ? 'bg-danger' : ratio > 0.4 ? 'bg-warning' : 'bg-success');
+        }
+        if (idPrefix === 'm0') {
+            // M0占比过低意味着流动性危机，变红预警
+            barElem.className = 'progress-bar ' + (ratio < 0.2 ? 'bg-danger' : 'bg-primary');
+        }
+    }
+}
+
+// 定义一个全局 Promise，让其他脚本可以等待
+window.gameDataPromise = (async function () {
+    try {
+        // 1. 尝试读取本地缓存（同步，极快）
+        const localDataRaw = localStorage.getItem("gameData");
+        let localData = localDataRaw ? JSON.parse(localDataRaw) : null;
+
+        // 2. 发起网络请求（并行处理）
+        // 建议：后端接口直接返回 { version, data }
+        const res = await fetch("/api/gamedata");
+        const serverData = await res.json();
+
+        // 3. 版本比对
+        if (!localData || localData.version !== serverData.version) {
+            console.log("[数据同步] 更新缓存");
+            localStorage.setItem("gameData", JSON.stringify(serverData));
+            localData = serverData;
+        }
+
+        // 4. 挂载到 window
+        window.gameData = localData;
+        return localData;
+    } catch (err) {
+        console.error("[数据同步] 错误:", err);
+        // 兜底策略：如果网络挂了，尝试用旧缓存
+        if (window.gameData) return window.gameData;
+        throw err;
+    }
+})(); // 立即执行
+
 
 const gameWS = new GameWS(`ws://${window.location.host}/ws/${getUserInfo().name}`);

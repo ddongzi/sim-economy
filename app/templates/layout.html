@@ -6,6 +6,11 @@
     <title>{{ company_name }} - SimEcon</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath/texmath.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js"></script>
+
     <style>
         :root {
             --sidebar-width: 50px;
@@ -30,6 +35,7 @@
             height: 100vh; /* 强制占满整个屏幕，不随内容变长 */
             overflow: hidden; /* 防止外层出现滚动条 */
         }
+
         /* 顶部状态栏 */
         .game-navbar {
             height: var(--navbar-height);
@@ -44,17 +50,6 @@
             right: 0; /* 结束位置：屏幕最右侧 */
             z-index: 1030; /* 确保在所有元素之上，Bootstrap 5 的标准层级 */
         }
-
-
-        /* 移除 Bootstrap Container 默认外边距 */
-        .game-content {
-            flex-grow: 1;
-            position: relative;
-            padding-top: var(--navbar-height);
-            min-height: calc(100vh - 115px); /* 100vh - 顶部50 - 底部65 */
-            overflow-y: auto; /* 只有内容区域可以滚动 */
-        }
-
 
         /* 导航项样式 */
         .nav-link-custom {
@@ -105,37 +100,16 @@
 
     </style>
     <script>
-        // 定义一个全局 Promise，让其他脚本可以等待
-        window.gameDataPromise = (async function () {
-            try {
-                // 1. 尝试读取本地缓存（同步，极快）
-                const localDataRaw = localStorage.getItem("gameData");
-                let localData = localDataRaw ? JSON.parse(localDataRaw) : null;
-
-                // 2. 发起网络请求（并行处理）
-                // 建议：后端接口直接返回 { version, data }
-                const res = await fetch("/api/gamedata");
-                const serverData = await res.json();
-
-                // 3. 版本比对
-                if (!localData || localData.version !== serverData.version) {
-                    console.log("[数据同步] 更新缓存");
-                    localStorage.setItem("gameData", JSON.stringify(serverData));
-                    localData = serverData;
-                }
-
-                // 4. 挂载到 window
-                window.gameData = localData;
-                return localData;
-            } catch (err) {
-                console.error("[数据同步] 错误:", err);
-                // 兜底策略：如果网络挂了，尝试用旧缓存
-                if (window.gameData) return window.gameData;
-                throw err;
-            }
-        })(); // 立即执行
+        const md = window.markdownit({
+            html: true,
+            breaks: true
+        }).use(texmath, {
+            engine: katex,
+            delimiters: 'dollars'
+        });
 
     </script>
+
 </head>
 <body>
 <!-- 顶部状态栏保持不变 -->
@@ -145,19 +119,17 @@
     </div>
     <div class="d-flex gap-3 align-items-center">
         <span id="player-cash" class="text-success fw-bold small">💰 $0.00</span>
-        <span id="cycle-status" class="badge bg-danger" style="font-size: 0.7rem;">周期: --</span>
+        <span id="cycle-status" class="badge">景气指数: 100</span>
     </div>
 </nav>
 
 <!-- 主内容区域：底部需要留出导航栏的高度 -->
-<div class="main-wrapper">
-    <main class="game-content container-fluid pt-5 pb-5 mb-4">
-        {% block content %}{% endblock %}
-    </main>
-</div>
+<main class="container-fluid overflow-hidden pt-5 pb-5">
+    {% block content %}{% endblock %}
+</main>
 
 <!-- 底部导航栏：替换原来的 sidebar -->
-<nav class="bottom-nav d-flex justify-content-around align-items-center shadow">
+<nav class="bottom-nav fixed-bottom d-flex justify-content-around align-items-center shadow">
     <a href="/landscape" class="nav-link-custom {% if active_page == 'landscape' %}active{% endif %}" title="总部">
         <i class="bi bi-map"></i>
     </a>
@@ -175,6 +147,9 @@
     </a>
     <a href="/economic" class="nav-link-custom {% if active_page == 'economic' %}active{% endif %}" title="经济">
         <i class="bi bi-graph-up-arrow"></i>
+    </a>
+    <a href="/journal" class="nav-link-custom {% if active_page == 'economic' %}active{% endif %}" title="经济">
+        <i class="bi bi-journal"></i>
     </a>
     <!-- 设置按钮通常放在末尾 -->
     <a href="#" class="nav-link-custom" data-bs-toggle="modal" data-bs-target="#settingsModal">

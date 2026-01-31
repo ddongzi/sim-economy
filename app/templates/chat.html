@@ -33,7 +33,7 @@
         margin-bottom: 2px;
     }
 </style>
-<div class="container-fluid py-3 ">
+<div class="container-fluid py-3 overflow-auto">
     <div class="row g-3">
         <div class="col-md-3">
             <div class="card shadow-sm h-100">
@@ -143,8 +143,8 @@
                     from: getUserInfo().name,
                     message: text
                 };
-                const subtype = this.target === 'global' ? 'global' : 'private';
-                gameWS.send(this.type, subtype, JSON.stringify(payload));
+                const sub_type = this.target === 'global' ? 'global' : 'private';
+                gameWS.send(this.type, sub_type, JSON.stringify(payload));
                 this.input.value = '';
             }
         }

@@ -4,13 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.db.session import SessionDep
 from app.dependencies import get_current_user
 
-from app.crud import crud_inventory, crud_market,crud_resources
+from app.crud import crud_inventory, crud_market, crud_resources, crud_player
 from app.models import MarketOrder, MarketOrderCreate, PlayerPublic, MarketOrderPublic, TransactionActionType
 from app.core.error import GameError
 from app.service.accounting import AccountingService
 from app.service.exchange import match_order, calculate_price_per_unit, exchange_service
 import asyncio
 from app.service.inventory import InventoryService
+from app.service.playerService import playerService
 from app.service.ws import manager
 
 router = APIRouter()
@@ -22,6 +23,17 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
                               player_in: PlayerPublic = Depends(get_current_user)):
     """ 提交委托订单 """
     try:
+        resource = crud_resources.get_resource(session, order_in.resource_id)
+        # 涨跌停设置
+        min_price = resource.base_price * 0.5
+        max_price = resource.base_price * 2.0
+
+        if order_in.price_per_unit > max_price:
+            raise HTTPException(status_code=400, detail=f"价格超出涨停价: {max_price}")
+
+        if order_in.price_per_unit < min_price:
+            raise HTTPException(status_code=400, detail=f"价格低于跌停价: {min_price}")
+
         order = MarketOrder(
             **order_in.model_dump()
         )
@@ -43,6 +55,10 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
         # 撮合订单
         match_order(session, order)
         session.commit()
+
+        player = crud_player.get_player_by_id(session, player_in.id)
+        await playerService.send_update_cash(player.name, player.cash)
+
         # 撮合完成后，调用广播
         # 这个 broadcast 不在 websocket 循环里，而是在业务逻辑里
         new_orders = crud_market.get_active_orders_by_resource(session, order.resource_id)
@@ -64,7 +80,7 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
         logger.info("Match ok. will ws broadcast")
         await exchange_service.broadcast_to_resource(order.resource_id, {
             "type": "exchange",
-            "subtype":"update",
+            "sub_type":"update",
             "data": {
                 "resource_id": order.resource_id,
                 "orders": ret_orders
@@ -72,9 +88,10 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
         })
 
     except GameError as e:
+        logger.error(f"create market order failed. {e}")
         raise HTTPException(status_code=400, detail=e.message)
     except Exception as e:
-        logger.error(e)
+        logger.exception(f"create market order failed. {e}")
         raise HTTPException(status_code=500, detail="内部错误")
     return {"msg": "订单创建成功"}
 
@@ -106,10 +123,11 @@ async def get_market_price(session: SessionDep, resource_id: int,
         highest_buy_order = MarketOrderPublic(**highest_buy_order.model_dump(),
                                               quantity=highest_buy_order.total_quantity - highest_buy_order.filled_quantity)
     market_price = crud_market.get_resource_market_price(session, resource_id)
+    resource = crud_resources.get_resource(session, resource_id)
     if market_price == 0:
-        resource = crud_resources.get_resource(session, resource_id)
         market_price = resource.base_price
     return {
+        "base_price": resource.base_price,
         "market_price": round(market_price, 3),
         "lowest_sell_order": lowest_sell_order,
         "highest_buy_order": highest_buy_order

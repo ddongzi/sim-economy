@@ -100,7 +100,8 @@ def add_cash(session: SessionDep, player_id: int, cash)->bool:
     return True
 
 def total_cash(session: SessionDep)->int:
-    result = session.exec(
-        select(func.sum(Player.cash))
-    ).one()
+    result = (session.exec(
+        select(func.sum(Player.cash)).where(Player.id !=0)
+    )
+              .one())
     return result or 0

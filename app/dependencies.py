@@ -9,9 +9,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.testing.pickleable import User
+
+from app.core.error import RedirectToLoginException
 from app.models import PlayerCreate,PlayerPublic
 from app.db.session import SessionDep
-
+import logging
+logger = logging.getLogger(__name__)
 # 这里的配置应与你生成 Token 时一致
 SECRET_KEY = "你的加密密钥"
 ALGORITHM = "HS256"
@@ -41,26 +44,21 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 # 验证函数：尝试从 Cookie 获取 token 并解析
-async def get_current_user(request: Request)->PlayerPublic:
-    # 1. 从请求的 Cookie 中获取名为 'access_token' 的值
+async def get_current_user(request: Request) -> PlayerPublic:
     token = request.cookies.get("access_token")
 
     if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="未检测到登录凭证",
-        )
-
+        # 不抛出 401，而是抛出自定义异常
+        raise RedirectToLoginException()
     try:
-        # 2. 解码 JWT
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("name")
         userid: str = payload.get("id")
         if username is None:
-            raise HTTPException(status_code=401, detail="无效的凭证内容")
-        return PlayerPublic(name=username, id=int(userid))  # 或者返回从数据库查到的 User 对象
+            raise RedirectToLoginException()
+        return PlayerPublic(name=username, id=int(userid))
     except JWTError:
-        raise HTTPException(status_code=401, detail="凭证已过期或被篡改")
+        raise RedirectToLoginException()
 
 async def refresh_building( session:SessionDep,
                             current_player: PlayerPublic = Depends(get_current_user)):

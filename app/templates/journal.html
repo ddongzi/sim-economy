@@ -112,7 +112,7 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 
 <script>
 
@@ -120,12 +120,13 @@
         const resp = await fetch("/static/guide.md")
         const gameWikiMD = await resp.text();
 
-        const renderEl = document.getElementById('md-render');
         const navEl = document.getElementById('toc-nav');
         const sidebar = document.getElementById('sidebar');
 
         // 1. 渲染 Markdown
-        renderEl.innerHTML = marked.parse(gameWikiMD);
+        const renderEl = document.getElementById('md-render');
+        renderEl.innerHTML = md.render(gameWikiMD);
+
 
         // 2. 提取 H2 标签生成右侧目录
         const headings = renderEl.querySelectorAll('h2, h3');

@@ -1,6 +1,8 @@
 from datetime import datetime,timezone
 from enum import IntEnum, StrEnum
 
+from pydantic import BaseModel
+from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship,text
 from time import time
 from typing import Optional, List
@@ -40,6 +42,7 @@ class PlayerCreate(PlayerBase):
     email: str
     password: str
 class PlayerLogin(PlayerBase):
+    password: str
     pass
 
 class ResourceBase(SQLModel):
@@ -78,14 +81,14 @@ class Recipe(RecipeBase, table=True):
     id: int = Field(default=None, primary_key=True)
     output_resource_id: int = Field(default=None, foreign_key="resource.id", unique=True)
     per_hour: float = Field(description="每小时产出", default=0, nullable=True)
-    building_meta_id: str = Field(default=None, foreign_key="building_meta.id")
+    building_meta_id: str = Field(default=None, foreign_key="building_meta.id", nullable=True)
 
     building: BuildingMeta = Relationship()
     output: Resource = Relationship()
     inputs: List[RecipeRequirement] = Relationship(back_populates="recipe")
 
 class RecipeCreate(RecipeBase):
-    inputs: List[RecipeRequirementCreate]
+    inputs: List[RecipeRequirementCreate] | None = None
 
 class RecipePublic(RecipeBase):
     id: int
@@ -162,6 +165,10 @@ class PlayerBuilding(PlayerBuildingBase, table=True):
     player_id: int = Field(foreign_key="player.id", index=True)
     building_meta_id: str = Field(foreign_key="building_meta.id")
     slot_number: int = Field(default=0)
+    # 复合唯一约束：确保同一个 player_id 下 slot_number 不重复
+    __table_args__ = (
+        UniqueConstraint("player_id", "slot_number", name="uq_player_slot"),
+    )
 
     level: int = Field(default=1)
     # status 建议设为枚举：idle (空闲), upgrading (升级中), producing (生产中)
@@ -293,6 +300,12 @@ class TransactionActionType(IntEnum):
     BUILDING_UPGRADE_COST = 16 # 建筑升级指出
     SYSTEM_BUILDING_UPGRADE_REVENUE = 17 # 系统收取升级费用
 
+    BUILD_DESTROY_REFUND = 18 # 玩家销毁建筑退回
+    BUILD_DESTROY_COST = 19
+
+    GOVERNMENT_PURCHASE_REVENUE = 20 # 政府采购
+    GOVERNMENT_PURCHASE_COST = 20
+
 
 class TransactionLog(SQLModel, table=True):
     """ 全服记账表 """
@@ -313,7 +326,11 @@ class ContractStatus(StrEnum):
     FAILED = "failed"       # 交易失败（如签署时发现余额/库存不足）
 
 class SpotContract(SQLModel, table=True):
-    """ 现货合同 """
+    """
+    现货合同
+    发送方（卖方）：准备货物，价格
+    接收者（买方）：是否接受， 扣钱。
+    """
     __tablename__ = "spot_contract"
     id: int = Field(default=None, primary_key=True)
     contract_no: str = Field(unique=True, index=True, description="合同编号", nullable=True)
@@ -363,3 +380,77 @@ class BuildingLevelsConfig(SQLModel, table=True):
 
 
 
+class MarketSnapshot(SQLModel, table=True):
+    """ 市场快照：cpi历史 """
+    __tablename__ = "market_snapshot"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=datetime.now)
+    cpi: float        # 存储当时的 CPI
+    m1_total: float = Field(default=0) # 货币供应链
+    turnover: float # 存储当时的交易额
+    volume: int
+    order_count:int # 成交订单数
+    gini_index: float
+    total_assets: float    # 社会总资产
+
+class ResourceSnapshot(SQLModel, table=True):
+
+    """ 市场资源快照： """
+    __tablename__ = "resource_snapshot"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    resource_id: int = Field(index=True, foreign_key="resource.id")
+    price: float
+    timestamp: datetime = Field(default_factory=datetime.now, index=True)
+
+class GovernmentOrder(SQLModel, table=True):
+    """
+    政府公开指令：定价 采购、抛售
+    """
+    __tablename__ = "government_order"
+    id: int = Field(default=None, primary_key=True)
+    resource_id: int = Field(default=None, foreign_key="resource.id")
+    order_type: str=Field(index=True) # purchase采购，dump抛售
+    target_quantity: int
+    current_quantity: int
+    fixed_price: float # 定价
+
+    title: str # 指令名字
+    description:str = Field(default="")
+
+    status: int # 0 active, 1 completed, 2 expired
+    created_at: datetime = Field(default_factory=datetime.now)
+    expires_at: datetime| None =None
+
+class GovernmentOrderDelivery(BaseModel):
+    order_id: int
+    quantity: int
+
+class GovernmentActionLog(SQLModel, table=True):
+    """
+    记录政府政策、动作日志
+    """
+    __tablename__ = "government_action_log"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    category: str  # "政策", "干预", "结算"
+    title: str  # "基础建设周"
+    content: str  # "建筑类资源交易税 -2.0%"
+
+    # 政策核心字段
+    is_active: bool = Field(default=False)  # 标记是否为当前生效政策
+    expires_at: Optional[datetime] = None  # 到期时间
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class UpdateResourceRecipeRequest(BaseModel):
+    # 资源表字段
+    resource_id: int
+    base_price: float
+    base_weight: float
+
+    # 配方表字段
+    recipe_id: int | None = None
+    per_hour: float
+    building_meta_id: str
+
+    # 如果需要同时修改原材料，可以加个列表
+    inputs: Optional[List[RecipeRequirementCreate]] = None

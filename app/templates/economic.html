@@ -2,83 +2,106 @@
 
 {% block content %}
 <div class="container-fluid py-3 game-content">
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm border-start border-primary border-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small fw-bold">货币供应量 (M1) <i class="bi bi-question-circle"
-                                                                                  data-bs-toggle="tooltip"
-                                                                                  title="现金(M0) + 交易所挂单锁定资金"></i></span>
-                        <i class="bi bi-currency-dollar text-primary"></i>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-0">
+            <div class="row g-0 text-center">
+                <div class="col-md-2 py-3 border-end">
+                    <div class="d-flex flex-column align-items-center" data-bs-toggle="tooltip"
+                         title="M1: 现金(M0) + 交易所挂单资金">
+                        <span class="text-muted small fw-bold mb-2">货币供应 M1</span>
+
+                        <!-- M1 大而醒目 -->
+                        <h4 id="m1-total" class="fw-bold mb-0 text-primary">--</h4>
+
+                        <!-- M0 作为次级信息，使用 small 标签和 muted 颜色 -->
+                        <div class="d-flex align-items-center mt-1">
+                            <span class="text-muted small me-1">M0:</span>
+                            <span id="m0-total" class="fw-bold text-secondary" style="font-size: 0.9rem;">--</span>
+                        </div>
+
+                        <!-- 极简进度条 -->
+                        <div class="progress w-50 mt-2" style="height: 3px; background-color: rgba(0,0,0,0.05);">
+                            <div id="m0-ratio" class="progress-bar bg-primary" style="width: 70%"></div>
+                        </div>
                     </div>
-                    <h3 id="m1-total" class="fw-bold mt-2 text-truncate" title="这里放原始数字">--</h3>
-                    <div class="progress mt-2" style="height: 4px;">
-                        <div id="m0-ratio" class="progress-bar" role="progressbar" style="width: 70%"
-                             title="现金占比"></div>
-                    </div>
-                    <small class="text-muted mt-1 d-block text-end" id="m0-val">M0: --</small>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm border-start border-success border-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small fw-bold">全服物价指数 (CPI) <i class="bi bi-question-circle"
-                                                                                     data-bs-toggle="tooltip"
-                                                                                     title="基于各资源加权成交均价，基准为100"></i></span>
-                        <i class="bi bi-graph-up-arrow text-success"></i>
+
+
+                <div class="col-md-2 py-3 border-end">
+                    <div class="d-flex flex-column align-items-center" data-bs-toggle="tooltip"
+                         title="基于各资源加权成交均价，基准为100">
+                        <span class="text-muted small fw-bold mb-1">CPI 指数</span>
+                        <h4 id="cpi-val" class="fw-bold mb-0 text-success">--</h4>
+                        <span id="cpi-trend" class="badge bg-success-soft text-success smaller mt-1">↑ 2.5%</span>
                     </div>
-                    <h3 id="cpi-val" class="fw-bold mt-2">--</h3>
-                    <div id="cpi-trend" class="small text-success fw-bold">--</div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm border-start border-warning border-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small fw-bold">24H 交易总量 <i class="bi bi-question-circle"
-                                                                               data-bs-toggle="tooltip"
-                                                                               title="过去24小时全资源成交总额"></i></span>
-                        <i class="bi bi-cart-check text-warning"></i>
+
+                <div class="col-md-2 py-3 border-end">
+                    <div class="d-flex flex-column align-items-center" data-bs-toggle="tooltip"
+                         title="0为绝对平均，1为绝对两极分化">
+                        <span class="text-muted small fw-bold mb-1">财富基尼</span>
+                        <h4 id="gini-val" class="fw-bold mb-0 text-danger">0.42</h4>
                     </div>
-                    <h3 id="volume-24h" class="fw-bold mt-2">--</h3>
-                    <small id="order-count" class="text-muted">成交笔数: --</small>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm border-start border-info border-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small fw-bold">全社会总资产 <i class="bi bi-question-circle"
-                                                                               data-bs-toggle="tooltip"
-                                                                               title="M1 + 全服库存资源折算价值"></i></span>
-                        <i class="bi bi-shield-check text-info"></i>
+
+                <div class="col-md-2 py-3 border-end">
+                    <div class="d-flex flex-column align-items-center" data-bs-toggle="tooltip"
+                         title="过去24小时全资源成交总额">
+                        <span class="text-muted small fw-bold mb-1">24H 交易额</span>
+                        <h4 id="turnover-24h" class="fw-bold mb-0 text-warning">--</h4>
+                        <small id="order-count" class="text-muted smaller mt-1">成交: -- 笔</small>
                     </div>
-                    <h3 id="total-assets" class="fw-bold mt-2">--</h3>
-                    <small class="text-muted">资产证券化率: <span id="asset-ratio">--</span></small>
                 </div>
+
+                <div class="col-md-2 py-3 border-end">
+                    <div class="d-flex flex-column align-items-center" data-bs-toggle="tooltip" title="货币流转频率">
+                        <span class="text-muted small fw-bold mb-1">流转速度</span>
+                        <h4 id="velocity-val" class="fw-bold mb-0 text-info">2.4</h4>
+                        <small class="text-muted smaller mt-1">健康: 1.5-4.0</small>
+                    </div>
+                </div>
+                <div class="col-md-2 py-3">
+                    <div class="d-flex flex-column align-items-center" data-bs-toggle="tooltip"
+                         title="全服总资产 = 货币供应(M1) + 全服库存物资价值">
+                        <span class="text-muted small fw-bold mb-1">社会总资产</span>
+                        <!-- 总资产是全服最大的数，用 text-dark 或 text-info 表现稳重感 -->
+                        <h4 id="total-assets" class="fw-bold mb-0 text-dark">--</h4>
+
+                        <!-- 核心衍生指标：资产证券化率或实物占比 -->
+                        <div class="d-flex align-items-center mt-1">
+                            <small class="text-muted smaller">实物占比:</small>
+                            <small id="asset-real-ratio" class="fw-bold text-info ms-1">--%</small>
+                        </div>
+
+                        <!-- 极简进度条：反映钱多还是货多 -->
+                        <div class="progress w-50 mt-2" style="height: 3px; background-color: rgba(0,0,0,0.05);">
+                            <div id="asset-ratio-bar" class="progress-bar bg-info" style="width: 45%"
+                                 title="实物资产占比"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 
+
     <div class="row g-3 mb-4">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between">
-                    <span class="fw-bold">价格指数与交易热度 (14D)</span>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary active">指数</button>
-                        <button class="btn btn-outline-secondary">交易量</button>
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">价格指数与交易热度</span>
+
+                    <!-- 新增的操作按钮区域 -->
+                    <div class="d-flex align-items-center gap-3">
+
                     </div>
                 </div>
                 <div class="card-body">
                     <div id="main-history-chart" style="height: 350px;"></div>
                 </div>
             </div>
+
         </div>
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm h-100">
@@ -92,7 +115,7 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white border-0 py-3 fw-bold">资源微观市场快照</div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -102,8 +125,17 @@
                     <th>成交价格 (单位)</th>
                     <th>24H 涨跌</th>
                     <th>库存总量</th>
-                    <th>挂单深度 (Ask/Bid)</th>
-                    <th class="pe-4 text-center">市场流动性</th>
+                    <!-- 添加 Tooltip 到这里 -->
+                    <th data-bs-toggle="tooltip"
+                        title="当前市场上等待出售的订单总量(Ask)与等待购买的订单总量(Bid)的对比。反映供需平衡。">
+                        挂单深度 (Ask/Bid)
+                    </th>
+
+                    <!-- 添加 Tooltip 到这里 -->
+                    <th class="pe-4 text-center" data-bs-toggle="tooltip"
+                        title="衡量该资源变现的难易程度。分数越高，交易越活跃，越容易快速卖出。">
+                        市场流动性
+                    </th>
                 </tr>
                 </thead>
                 <tbody id="resource-table-body" class="small">
@@ -111,6 +143,79 @@
             </table>
         </div>
     </div>
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <span class="fw-bold"><i class="bi bi-bank me-1"></i> 政府公开</span>
+            <span class="badge bg-primary-soft text-primary small">政策周期: 第 42 阶段</span>
+        </div>
+        <div class="card-body">
+            <!-- 1. 财政与物资储备区 -->
+            <div class="row g-2 mb-3">
+                <div class="col-4 border-end">
+                    <div class="text-muted smaller">国库余额 (M0)</div>
+                    <div class="h5 fw-bold text-primary mb-0" id="gov-cash">15.4M</div>
+                    <small class="text-success" style="font-size: 0.7rem;">今日盈余:---K</small>
+                </div>
+                <div class="col-8 ps-3">
+                    <div class="text-muted smaller">战略储备</div>
+                    <div class="d-flex gap-2 mt-1">
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分割线：opacity-10 让颜色更淡，my-3 增加上下间距 -->
+            <hr class="my-3 opacity-10">
+            <!-- 直接放入父级容器 -->
+            <div class="audit-log-content">
+                <!-- 1. 政策项：作为列表的一部分，使用 bg-light 区分 -->
+                <div class="d-flex justify-content-between align-items-center p-2 mb-2 bg-light border-start  border-4 small fw-bold">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    当前政策：基础建设周 (建筑税率 -2.0%)
+                    <span class="text-muted font-monospace">剩 48h</span>
+                </div>
+
+                <!-- 2. 日志流：纯粹的 Flex 布局列表 -->
+                <div class="overflow-auto" style="height: 180px;">
+                    <!-- 使用 small 类统一缩小字号，font-monospace 保证对齐 -->
+                    <div class="list-unstyled small font-monospace">
+
+                        <div class="d-flex mb-1 py-1 border-bottom border-light">
+                            <span class="text-muted me-2">14:30:05</span>
+                            <span class="text-danger fw-bold me-2">[干预]</span>
+                            <span class="text-dark">系统抛售电力 <span
+                                    class="text-danger">5,000</span> 单位以平抑电价</span>
+                        </div>
+
+                        <div class="d-flex mb-1 py-1 border-bottom border-light">
+                            <span class="text-muted me-2">11:15:22</span>
+                            <span class="text-success fw-bold me-2">[补贴]</span>
+                            <span class="text-dark">拨付 <span
+                                    class="text-success">2.0M</span> 用于 [新开荒土地] 补贴</span>
+                        </div>
+
+                        <div class="d-flex mb-1 py-1 border-bottom border-light">
+                            <span class="text-muted me-2">08:00:01</span>
+                            <span class="text-primary fw-bold me-2">[结算]</span>
+                            <span class="text-dark">全服交易税结算入库 <span class="text-primary">+450,000</span></span>
+                        </div>
+
+                        <!-- 更多记录... -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分割线：opacity-10 让颜色更淡，my-3 增加上下间距 -->
+            <hr class="my-3 opacity-10">
+            <!-- 政府计划容器 -->
+            <div id="government-plans-container">
+                <!-- 这里将由 JS 动态填充 -->
+                <div class="text-center py-3 text-muted small">暂无进行中的政府计划</div>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 {% endblock %}
 {% block scripts %}
@@ -125,14 +230,21 @@
             const data = await res.json();
 
             // 1. 更新大数字卡片
-            document.getElementById('m1-total').innerText = `$${formatValue(data.m1)}`;
-            document.getElementById('m0-val').innerText = `M0: $${formatValue(data.m0)}`;
+            document.getElementById('m1-total').innerText = `$${formatCashValue(data.m1)}`;
+            document.getElementById('m0-total').innerText = `$${formatCashValue(data.m0)}`;
             document.getElementById('m0-ratio').style.width = `${(data.m0 / data.m1) * 100}%`;
+            document.getElementById('gini-val').innerText = `${data.gini}`;
 
             document.getElementById('cpi-val').innerText = data.cpi.toFixed(2);
-            document.getElementById('volume-24h').innerText = `$${data.market_volume_24h['volume'].toLocaleString()}`;
-            document.getElementById('order-count').innerText = `成交笔数： ${data.market_volume_24h['count'].toLocaleString()}`;
-            document.getElementById('total-assets').innerText = `$${formatValue(data.total_assets_value)}`;
+            document.getElementById('turnover-24h').innerText = `$${formatCashValue(data.market_24h['turnover'])}`;
+            document.getElementById('order-count').innerText = `成交笔数： ${data.market_24h['count'].toLocaleString()}`;
+            document.getElementById('total-assets').innerText = `$${formatCashValue(data.total_assets_value)}`;
+            document.querySelector("#velocity-val").innerText = `${data.velocity_val}`;
+
+            const isUp = data.cpi_trend >= 0;
+            // 自动切换颜色：涨了变红（通胀），跌了变绿（通缩）或按你游戏逻辑定
+            document.querySelector("#cpi-trend").className = `badge ${isUp ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success'} smaller mt-1`;
+            document.querySelector("#cpi-trend").innerText = `${isUp ? '↑' : '↓'} ${Math.abs(data.cpi_trend * 100).toFixed(1)}%`;
 
             // 2. 渲染主历史折线图 (双轴：CPI + Volume)
             renderHistoryChart(data.history);
@@ -142,6 +254,8 @@
 
             // 4. 填充资源详情表
             renderResourceTable(data.resources);
+
+            renderGovernmentData(data.government)
 
             // 初始化 Tooltips
             const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -154,51 +268,89 @@
 
     function renderHistoryChart(history) {
         if (!historyChart) historyChart = echarts.init(document.getElementById('main-history-chart'));
+
+// 1. 构造 ECharts 时间轴专用的数据格式
+        const cpiData = history.dates.map((d, i) => [d, history.cpi_values[i]]);
+        const volData = history.dates.map((d, i) => [d, history.volume_values[i]]);
+
         const option = {
-            tooltip: {trigger: 'axis'},
-            grid: {left: '3%', right: '3%', bottom: '3%', containLabel: true},
-            xAxis: {type: 'category', data: history.dates, boundaryGap: false},
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {type: 'cross'} // 方便对比双轴数据
+            },
+            legend: {data: ['CPI指数', '成交额']},
+            grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
+            xAxis: {
+                type: 'time', // 时间轴模式
+                boundaryGap: false,
+                splitLine: {show: false}
+            },
             yAxis: [
-                {type: 'value', name: 'CPI', scale: true},
-                {type: 'value', name: 'Volume', splitLine: {show: false}}
+                {
+                    type: 'value',
+                    name: 'CPI',
+                    scale: true, // 自动缩放，不从0开始，让波动更明显
+                    axisLabel: {formatter: '{value}'}
+                },
+                {
+                    type: 'value',
+                    name: '成交额',
+                    splitLine: {show: false},
+                    axisLabel: {formatter: (v) => v > 1000 ? (v / 1000 + 'k') : v} // 大额数值简化
+                }
             ],
             series: [
                 {
-                    name: 'CPI指数', type: 'line', smooth: true, data: history.cpi_values,
+                    name: 'CPI指数',
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: false,
+                    data: cpiData, // 传入 [时间, 数值] 数组
                     lineStyle: {width: 3, color: '#198754'},
-                    areaStyle: {color: 'rgba(25, 135, 84, 0.1)'}
+                    areaStyle: {color: 'rgba(25, 135, 84, 0.1)'},
+                    yAxisIndex: 0
                 },
                 {
-                    name: '成交额', type: 'bar', yAxisIndex: 1, data: history.volume_values,
-                    itemStyle: {color: 'rgba(13, 110, 253, 0.2)'}
+                    name: '成交额',
+                    type: 'bar', // 建议成交额用柱状图，与 CPI 折线区分
+                    data: volData,
+                    itemStyle: {color: 'rgba(13, 110, 253, 0.3)'},
+                    yAxisIndex: 1
                 }
             ]
         };
+
         historyChart.setOption(option);
+
     }
 
     function renderSectorChart(sectors) {
         if (!sectorChart) sectorChart = echarts.init(document.getElementById('sector-pie-chart'));
+        const data = sectors.map(s => {
+            return {value: s.turnover, name: s.industry_id}
+        })
         const option = {
             tooltip: {trigger: 'item'},
             series: [{
-                type: 'pie', radius: ['40%', '70%'],
-                data: sectors.map(s => ({value: s.volume, name: s.name})),
+                type: 'pie',
+                radius: ['40%', '70%'], // 环形图设计
+                data: data,
                 itemStyle: {borderRadius: 8, borderColor: '#fff', borderWidth: 2}
             }]
+
         };
         sectorChart.setOption(option);
     }
 
-    function renderResourceTable(resources) {
+    function renderResourceTable(data) {
         const tbody = document.getElementById('resource-table-body');
-        tbody.innerHTML = resources.map(res => {
+        tbody.innerHTML = data.map(res => {
             const priceColor = res.change >= 0 ? 'text-success' : 'text-danger';
             const progressColor = res.liquidity > 70 ? 'bg-success' : (res.liquidity > 30 ? 'bg-info' : 'bg-warning');
-
+            const resource = window.gameData.resources.find(r => r.id === res['resource_id'])
             return `
             <tr>
-                <td class="ps-4 fw-bold">${res.name}</td>
+                <td class="ps-4 fw-bold">${resource.name}</td>
                 <td>$${res.current_price.toFixed(3)}</td>
                 <td class="${priceColor}">${res.change >= 0 ? '↑' : '↓'} ${Math.abs(res.change)}%</td>
                 <td>${res.stock.toLocaleString()}</td>
@@ -211,6 +363,136 @@
             </tr>
         `;
         }).join('');
+    }
+
+    function renderGovernmentData(data) {
+        // 1. 渲染财政余额
+        document.getElementById('gov-cash').innerText = formatCashValue(data.cash);
+
+        // 2. 渲染战略储备 (动态生成图标)
+        const reserveContainer = document.querySelector('.d-flex.gap-2.mt-1');
+
+        // 使用 Object.entries 遍历所有储备资源
+        reserveContainer.innerHTML = data.inventory.map((item) => {
+            const resource = window.gameData.resources.find(r => r.id === item.resource_id)
+
+            return `
+            <span class="badge bg-light text-dark border fw-normal">
+                ${resource.name}: ${formatQuantity(item.quantity)}
+            </span>
+        `;
+        }).join('');
+
+        // 3. 渲染政策
+        const policyEl = document.querySelector('.audit-log-content .bg-light');
+        const now = new Date().getTime();
+        const end = new Date(data.current_policy.expires_at).getTime();
+        const remainingSec = Math.max(0, Math.floor((end - now) / 1000));
+        policyEl.innerHTML = `
+            <i class="bi bi-info-circle-fill me-1 text-info"></i>
+            当前政策：${data.current_policy.title} (${data.current_policy.content})
+            <span class="text-muted font-monospace ms-auto" id="policy-timer">${formatTime(remainingSec)}</span>
+        `;
+
+        // 4. 渲染日志流
+        const logContainer = document.querySelector('.list-unstyled.small.font-monospace');
+        logContainer.innerHTML = data.history.map(log => `
+        <div class="d-flex mb-1 py-1 border-bottom border-light">
+            <span class="text-muted me-2">${log.created_at}</span>
+            <span class=" fw-bold me-2">[${log.category}]</span>
+            <span class="text-dark">
+                ${log.content}
+            </span>
+        </div>
+    `).join('');
+        renderGovernmentOrders(data.orders)
+    }
+
+    /**
+     * 渲染政府回购计划列表
+     * @param {Array} orders - 后端返回的计划数组
+     */
+    function renderGovernmentOrders(orders) {
+        const container = document.getElementById('government-plans-container');
+
+        if (!orders || orders.length === 0) {
+            container.innerHTML = '<div class="text-center py-3 text-muted small">暂无进行中的政府计划</div>';
+            return;
+        }
+
+        const html = orders.map(order => {
+            // 计算百分比
+            const progress = Math.min((order.current_quantity / order.target_quantity) * 100, 100).toFixed(1);
+
+            return `
+        <div class="row g-2 mb-3 align-items-center border-bottom pb-3">
+            <!-- 左侧：计划信息 -->
+            <div class="col-10 pe-3 border-end">
+                <div class="d-flex align-items-center mb-1">
+                    <span class="badge bg-primary me-2">GOV</span>
+                    <span class="fw-bold small text-dark lh-1">${order.title}</span>
+                    <span class="ms-auto font-monospace text-muted small opacity-75">截至
+                        <span>${new Date(order.expires_at).toLocaleString()}</span>
+                    </span>
+                </div>
+
+                <div class="progress mb-1" style="height: 6px;">
+                    <div class="progress-bar bg-primary" role="progressbar"
+                         style="width: ${progress}%" aria-valuenow="${progress}"
+                         aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted opacity-75 small">
+                        单价: <span class="text-success fw-bold">$${order.fixed_price.toFixed(3)}</span>
+                        <span class="mx-1 text-secondary">|</span>
+                        目标: ${order.target_quantity.toLocaleString()}
+                    </div>
+                    <div class="text-primary fw-bold small">${progress}%</div>
+                </div>
+            </div>
+
+            <!-- 右侧：交互区 -->
+            <div class="col-2 ps-3">
+                <span class="fw-bold small text-dark lh-1 d-block mb-1">交付数量</span>
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control" id="delivery-amount-${order.id}" placeholder="数量">
+                    <button class="btn btn-primary fw-bold" type="button" onclick="submitDelivery(${order.id})">交付</button>
+                </div>
+            </div>
+        </div>`;
+        }).join('');
+
+        container.innerHTML = html;
+    }
+
+    async function submitDelivery(orderId) {
+        const input = document.getElementById(`delivery-amount-${orderId}`);
+        const amount = parseInt(input.value);
+
+        if (!amount || amount <= 0) {
+            alert("请输入有效的交付数量");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/government/delivery`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({order_id: orderId, quantity: amount})
+            });
+
+            if (response.ok) {
+                alert("交付成功！");
+                // 建议：此处调用刷新数据的函数
+                input.value = '';
+            } else {
+                const err = await response.json();
+                alert("交付失败: " + err.detail);
+            }
+        } catch (error) {
+            console.error("交付请求异常:", error);
+        }
     }
 
     // 首次加载

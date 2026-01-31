@@ -48,7 +48,7 @@ class WSConnectionManager:
         if receiver_name in self.active_connections:
             websocket = self.active_connections[receiver_name]
             await websocket.send_json(message)
-            logger.info(f"send to -> {receiver_name} {websocket}, {message}")
+            logger.info(f"send to -> {receiver_name} {websocket}, {message['type']} {message['sub_type']}")
         else:
              # 这一行日志能帮你发现 ID 类型错误或玩家不在线
             logger.warning(f"❌ 发送失败: 玩家 {receiver_name} 不在线或 ID 类型({type(receiver_name)})错误, {self.active_connections.keys()}")

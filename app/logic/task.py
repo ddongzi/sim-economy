@@ -3,9 +3,10 @@ from app.crud import crud_building,crud_resources,crud_recipe
 from app.db.session import SessionDep
 from decimal import Decimal,ROUND_UP
 import math
-
+import logging
+logger = logging.getLogger(__name__)
 def calculate_task_cost(session: SessionDep, task:BuildingTaskBase) :
-    """计算任务成本。 设置task属性  数量-决定时间，  时间 对于 成本"""
+    """计算任务时间成本。  设置task属性  数量-决定时间，  时间 对于 成本"""
     total_cost = 0
 
     # 建筑成本: 只和建筑本身meta有关
@@ -18,12 +19,8 @@ def calculate_task_cost(session: SessionDep, task:BuildingTaskBase) :
     if not building_meta :
         print("get_building_meta_by_resource_id failed")
         task.cash_cost = -1
-    total_cost += building_meta.maintenance_cost * hours
 
-    # 原料成本. 还要考虑仓库. 原料按照基础价格或者市价
-    for input in recipe.inputs:
-        input_resource = crud_resources.get_resource(session, input.resource_id)
-        total_cost += task.quantity * input.quantity * input_resource.base_price
+    total_cost += building_meta.maintenance_cost * hours
 
     task.cash_cost = round(total_cost, 3)
     return task

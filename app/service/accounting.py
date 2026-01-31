@@ -1,3 +1,4 @@
+from app.core.error import GameError
 from app.db.session import SessionDep
 from app.models import Player, TransactionLog
 from sqlmodel import select
@@ -18,11 +19,12 @@ class AccountingService:
 
         if not player:
             raise ValueError("player 异常")
+        amount = round(amount, 3)
 
         before = player.cash
         after = player.cash + amount
         if after < 0:
-            raise ValueError("player 资金不足")
+            raise GameError(f"player 资金不足 after:{after} change:{amount}")
         player.cash += amount
 
         log = TransactionLog(

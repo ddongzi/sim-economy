@@ -29,7 +29,6 @@
 </style>
 <div class="container-fluid py-3 ">
     <div class="row g-3">
-        <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2"></i> 我的仓库</h5>
@@ -47,52 +46,7 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
-                <div class="card-header bg-dark text-white py-3">
-                    <h6 class="mb-0">资源详情</h6>
-                </div>
-                <div class="card-body">
-                    <div class="text-center mb-4">
-                        <i class="bi bi-lightning-charge-fill text-warning display-4"></i>
-                        <h4 class="mt-2">电力</h4>
-                        <span class="badge bg-info text-dark">品质: Q2</span>
-                    </div>
-
-                    <div class="list-group list-group-flush mb-4 small">
-                        <div class="list-group-item d-flex justify-content-between px-0">
-                            <span class="text-muted">当前库存:</span>
-                            <span class="fw-bold">1,240,500 Units</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between px-0">
-                            <span class="text-muted">平均成本:</span>
-                            <span class="fw-bold text-success">$0.212</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between px-0">
-                            <span class="text-muted">估计总价值:</span>
-                            <span class="fw-bold">$262,986</span>
-                        </div>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newContractModal">
-                            <i class="bi bi-file-earmark-plus me-2"></i>发送合同 (免税)
-                        </button>
-                        <a href="/exchange" class="btn btn-outline-primary">
-                            <i class="bi bi-graph-up-arrow me-2"></i>前往交易所卖出
-                        </a>
-                        <button class="btn btn-outline-danger btn-sm mt-3">
-                            <i class="bi bi-trash me-2"></i>报废资源
-                        </button>
-                    </div>
-                </div>
-                <div class="card-footer bg-light small text-muted">
-                    <i class="bi bi-info-circle me-1"></i> 提示：通过合同卖给玩家可节省3%税费。
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}

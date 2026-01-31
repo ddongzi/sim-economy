@@ -3,197 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SimEcon | 经营模拟</title>
+    <title>SimEcon</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-        /* 仅保留必要的背景设置，其他全部使用 Bootstrap 类 */
-        .hero-bg {
-            min-height: 100vh;
-            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-            url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070') no-repeat center center/cover;
-        }
-    </style>
 </head>
-<body class="hero-bg d-flex align-items-center justify-content-center">
+<body class=" d-flex align-items-center justify-content-center">
+<div class="container-fluid bg-secondary-subtle bg-gradient vh-100 d-flex align-items-center justify-content-center bg-light">
+    <div class="row shadow-lg g-0 bg-white overflow-hidden rounded-4" style="max-width: 900px; min-height: 500px;">
 
-<div class="card shadow-lg border-0" style="width: 400px; background: rgba(255, 255, 255, 0.95);">
-    <div class="card-body p-4">
+        <!-- 左侧：系统信息栏 (Sidebar) -->
+        <div class="col-md-5 d-none d-md-flex flex-column justify-content-between p-5 bg-dark text-white border-end">
+            <div>
+                <h1 class="display-6 fw-bold mb-1">SimEcon.</h1>
+                <p class="small text-secondary tracking-widest text-uppercase">Macroeconomic Simulation</p>
+            </div>
 
-        <div class="text-center mb-4">
-            <h2 class="fw-bold text-dark mb-1">SimEcon</h2>
-            <p class="text-muted small">产业经营模拟系统</p>
+            <div id="quoteContainer">
+                <p class="fst-italic lh-base mb-2">“在这个世界上，除了死亡和税收以外，没有什么是确定的。”</p>
+                <p class="small text-secondary text-end">— 本杰明·富兰克林</p>
+            </div>
+
+            <div class="small opacity-50 font-monospace">
+                SYSTEM STATUS: ONLINE // v3.0
+            </div>
         </div>
 
-        <ul class="nav nav-pills nav-fill bg-light p-1 rounded mb-4" id="authTabs">
-            <li class="nav-item">
-                <button class="nav-link active" id="login-tab" onclick="switchTab('login')">登录</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="register-tab" onclick="switchTab('register')">注册</button>
-            </li>
-        </ul>
+        <!-- 右侧：交互区 (Login/Register Box) -->
+        <div class="col-md-7 p-5">
+            <ul class="nav nav-underline mb-5 justify-content-start" id="authTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active text-dark fw-bold" onclick="toggleForm('login', this)">登录存档
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link text-muted" onclick="toggleForm('reg', this)">初始化档案</button>
+                </li>
+            </ul>
 
-        <div id="loginSection">
+            <!-- 登录表单 -->
             <form id="loginForm">
                 <div class="mb-3">
-                    <label class="form-label small fw-bold">用户名</label>
-                    <input type="text" class="form-control form-control-lg" id="loginUser" placeholder="请输入账号"
+                    <label class="form-label small fw-semibold text-secondary">名字 / ID</label>
+                    <input type="text" class="form-control form-control-lg bg-light border-0" placeholder="name"
                            required>
                 </div>
                 <div class="mb-4">
-                    <label class="form-label small fw-bold">密码</label>
-                    <input type="password" class="form-control form-control-lg" id="loginPass" placeholder="请输入密码"
+                    <label class="form-label small fw-semibold text-secondary">访问密码</label>
+                    <input type="password" class="form-control form-control-lg bg-light border-0" placeholder="••••••••"
                            required>
                 </div>
-                <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">立即登录</button>
+                <button type="submit" class="btn btn-dark btn-lg w-100 shadow-sm mb-3">进入</button>
             </form>
-        </div>
 
-        <div id="registerSection" class="d-none">
-            <form id="registerForm">
+            <!-- 注册表单 (初始隐藏) -->
+            <form id="registerForm" class="d-none">
                 <div class="mb-3">
-                    <label class="form-label small fw-bold">新用户名</label>
-                    <input type="text" class="form-control" id="regUser" placeholder="字母或数字" required>
+                    <label class="form-label small fw-semibold text-secondary">名字</label>
+                    <input type="text" class="form-control bg-light border-0" placeholder="新名称" name="name">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small fw-bold">电子邮箱</label>
-                    <input type="email" class="form-control" id="regEmail" placeholder="name@example.com" required>
+                    <label class="form-label small fw-semibold text-secondary">邮箱</label>
+                    <input type="email" class="form-control bg-light border-0" placeholder="name@network.com" name="email">
                 </div>
                 <div class="mb-4">
-                    <label class="form-label small fw-bold">安全密码</label>
-                    <input type="password" class="form-control" id="regPass" placeholder="设置您的密码" required>
+                    <label class="form-label small fw-semibold text-secondary">设定密钥</label>
+                    <input type="password" class="form-control bg-light border-0" placeholder="密码" name="password">
                 </div>
-                <button type="submit" class="btn btn-success btn-lg w-100 mb-3">创建档案</button>
+                <button type="submit" class="btn btn-dark  btn-lg w-100 shadow-sm mb-3">注册</button>
             </form>
-        </div>
 
-        <div class="text-center border-top pt-3">
-            <p class="text-muted" style="font-size: 0.75rem;">&copy; 2026 SimEcon 经营模拟系统</p>
+            <div class="text-center mt-5">
+                <hr class="text-muted opacity-25">
+                <p class="text-muted" style="font-size: 0.65rem;">&copy; 2026 基于经济实况模拟引擎构建 // 核心：[]</p>
+            </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-    /**
-     * 切换逻辑：使用标准 Bootstrap 的 d-none 工具类
-     * 这样表单高度会自动撑开卡片，绝对不会挡住按钮
-     */
-    function switchTab(type) {
-        const isLogin = type === 'login';
+    function toggleForm(type, btn) {
+        const loginForm = document.getElementById('loginForm');
+        const regForm = document.getElementById('registerForm');
+        const tabs = document.querySelectorAll('.nav-link');
 
-        // 获取元素
-        const loginSec = document.getElementById('loginSection');
-        const regSec = document.getElementById('registerSection');
-        const loginBtn = document.getElementById('login-tab');
-        const regBtn = document.getElementById('register-tab');
+        // 切换按钮激活状态
+        tabs.forEach(t => t.classList.remove('active', 'text-dark', 'fw-bold'));
+        tabs.forEach(t => t.classList.add('text-muted'));
+        btn.classList.add('active', 'text-dark', 'fw-bold');
+        btn.classList.remove('text-muted');
 
-        if (isLogin) {
-            loginSec.classList.remove('d-none');
-            regSec.classList.add('d-none');
-            loginBtn.classList.add('active');
-            regBtn.classList.remove('active');
+        if (type === 'login') {
+            loginForm.classList.remove('d-none');
+            regForm.classList.add('d-none');
         } else {
-            loginSec.classList.add('d-none');
-            regSec.classList.remove('d-none');
-            loginBtn.classList.remove('active');
-            regBtn.classList.add('active');
+            loginForm.classList.add('d-none');
+            regForm.classList.remove('d-none');
         }
     }
-
 </script>
+
 <script>
     /**
-     * SimEcon 认证系统逻辑 (基于 Cookie 的身份验证)
+     * SimEcon 认证系统逻辑 (同步最新 HTML 结构)
      */
 
-    const API_BASE = "/api/player";
+    document.addEventListener('DOMContentLoaded', function () {
+        const API_BASE = "/api/player";
 
+        // 1. 处理登录请求
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.onsubmit = async (e) => {
+                e.preventDefault();
 
-    /**
-     * 处理登录请求
-     */
-    document.getElementById('loginForm').onsubmit = async (e) => {
-        e.preventDefault();
+                // 对应最新 HTML 中的输入框（通常通过 name 获取，或者你手动给 input 加 id）
+                const nameInput = loginForm.querySelector('input[type="text"]');
+                const passInput = loginForm.querySelector('input[type="password"]');
 
-        const payload = {
-            name: document.getElementById('loginUser').value,
-        };
+                const payload = {
+                    name: nameInput.value,
+                    // 如果后端需要密码字段，请确保 payload 包含 password
+                    password: passInput.value
+                };
 
-        try {
-            const response = await fetch(`${API_BASE}/login`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload),
-                // 重要：必须开启此项，浏览器才会存储并后续自动发送 Cookie
-                credentials: 'include'
-            });
+                try {
+                    const response = await fetch(`${API_BASE}/login`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
 
-            if (response.ok) {
-                // 登录成功后直接跳转到游戏主界面
-                window.location.href = '/landscape';
-            } else {
-                const err = await response.json();
-                alert("登录失败: " + (err.detail || "用户名或密码错误"));
-            }
-        } catch (err) {
-            console.error("网络异常:", err);
-            alert("无法连接到服务器，请检查网络连接");
+                    if (response.ok) {
+                        // 登录成功，重定向至地理景观/演化层
+                        window.location.href = '/landscape';
+                    } else {
+                        const err = await response.json();
+                        alert("接入失败: " + (err.detail || "主体识别码或密钥错误"));
+                    }
+                } catch (err) {
+                    console.error("网络异常:", err);
+                    alert("无法连接至模拟引擎，请检查节点状态");
+                }
+            };
         }
-    };
 
-    /**
-     * 处理注册请求
-     */
-    document.getElementById('registerForm').onsubmit = async (e) => {
-        e.preventDefault();
+        // 2. 处理注册请求 (初始化档案)
+        const registerForm = document.getElementById('registerForm');
+        if (registerForm) {
+            registerForm.onsubmit = async (e) => {
+                e.preventDefault();
 
-        const payload = {
-            name: document.getElementById('regUser').value,
-            email: document.getElementById('regEmail').value,
-            password: document.getElementById('regPass').value
-        };
+                const nameInput = registerForm.querySelector('input[name="name"]');
+                const emailInput = registerForm.querySelector('input[type="email"]');
+                const passInput = registerForm.querySelector('input[type="password"]');
 
-        try {
-            const response = await fetch(`${API_BASE}/register`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
+                const payload = {
+                    name: nameInput.value,
+                    email: emailInput.value,
+                    password: passInput.value
+                };
 
-            if (response.ok) {
-                alert("注册成功！请使用新账号登录。");
-                // 注册成功后自动切回登录页签
-                switchTab('login');
-            } else {
-                const err = await response.json();
-                alert("注册失败: " + (err.detail || "该用户名可能已被占用"));
-            }
-        } catch (err) {
-            console.error("请求异常:", err);
-            alert("服务器通讯失败，请稍后再试");
+                try {
+                    const response = await fetch(`${API_BASE}/register`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        // 模拟点击切换回登录标签
+                        const loginTab = document.querySelector('button[onclick*="login"]');
+                        if (loginTab) loginTab.click();
+                    } else {
+                        const err = await response.json();
+                        alert("初始化失败: " + (err.detail || "该标识符已在演化库中存在"));
+                    }
+                } catch (err) {
+                    console.error("请求异常:", err);
+                    alert("数据同步中断，请检查通讯链路");
+                }
+            };
         }
-    };
+    });
 
     /**
-     * 辅助功能：检查用户登录状态
-     * 在页面加载时运行，如果已有有效 Cookie 则直接进入游戏
+     * 辅助功能：自动检测环境接入状态
      */
     async function checkAuthOnLoad() {
         try {
-            const response = await fetch(`${API_BASE}/me`, {credentials: 'include'});
+            // 使用 [Fetch API](https://developer.mozilla.org) 检查状态
+            const response = await fetch("/api/player/me", {credentials: 'include'});
             if (response.ok) {
-                window.location.href = '/game.html';
+                window.location.href = '/landscape';
             }
         } catch (e) {
-            // 未登录或后端未响应，留在主页
-            console.log("未检测到登录状态");
+            console.log("未检测到活跃的模拟会话");
         }
     }
 
-    // 页面加载时执行
+    // 如果需要自动跳转，取消下面注释
     // window.onload = checkAuthOnLoad;
 
 </script>

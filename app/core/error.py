@@ -5,6 +5,8 @@ class GameError(Exception):
 
 from enum import Enum
 
+class RedirectToLoginException(Exception):
+    pass
 class GameRespCode(Enum):
     """
     响应错误码

@@ -12,8 +12,7 @@ from app.dependencies import get_current_user
 router = APIRouter()
 
 @router.get("/")
-async def root(request: Request):
-
+async def root(request: Request,):
     return templates.TemplateResponse("index.html", {"request": request})
 
 router.include_router(admin_router, prefix="/admin")

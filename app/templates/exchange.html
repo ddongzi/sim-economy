@@ -22,10 +22,21 @@
                         <h4 class="mb-0 fw-bold">交易所</h4>
                         <span class="badge bg-info text-dark">品质: 任意 (All Quality)</span>
                     </div>
-                    <div class="text-end">
-                        <small class="text-muted d-block">最新市价</small>
-                        <span class="fs-4 fw-bold text-success" id="least_market_price">$0.000</span>
+                    <div class="text-end d-flex align-items-center justify-content-end gap-3">
+                        <!-- 最新市价组 -->
+                        <div class="lh-1">
+                            <small class="text-muted me-1">最新市价</small>
+                            <span class="fs-4 fw-bold text-success" id="least_market_price">$0.000</span>
+                        </div>
+
+                        <!-- 垂直分割线（可选） -->
+                        <div class="border-start ps-3 lh-1">
+                            <small class="text-muted me-1">基准价格</small>
+                            <span class="small fw-bold text-secondary" id="base_price">$0.000</span>
+                        </div>
                     </div>
+
+
                 </div>
 
                 <div class="card-body p-0">
@@ -83,7 +94,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="small fw-bold">单价 ($)</label>
-                            <input type="number" class="form-control form-control-sm" step="0.001" value="0.245">
+                            <input type="number" class="form-control form-control-sm" step="0.001" value="0.000">
                         </div>
                         <div class="col-md-2">
                             <label class="small fw-bold">数量</label>
@@ -110,28 +121,57 @@
         const container = document.getElementById('resource-category-list');
         const resources = window.gameData.resources;
 
-        // 直接通过 map 映射生成 HTML 字符串
-        const html = resources.map(res => {
-            const isActive = '';
+        // 1. 按照行业 (industry) 分组
+        // 如果你的数据字段不是 industry，请替换为对应的键名（如 category）
+        const grouped = resources.reduce((acc, res) => {
+            const category = res.industry_id || '未分类';
+            if (!acc[category]) acc[category] = [];
+            acc[category].push(res);
+            return acc;
+        }, {});
 
-            return `<div class=" list-group-item list-group-item-action d-flex justify-content-between align-items-center cursor-pointer ${isActive}"
-                  onclick="selectExchangeResource(${res.id})"
-                  data-res-id="${res.id}">
-                <span>
-                    <span class="me-2">${renderIcon(res.icon)}</span>
-                    <span class="fw-medium">${res.name}</span>
-                </span>
-                <span class="badge ${isActive ? 'bg-primary text-white' : 'bg-light text-muted'} border-0">
-                    ID:${res.id}
-                </span>
-            </div>`;
+        // 2. 映射分组数据生成带有标题的 HTML
+        const html = Object.entries(grouped).map(([category, items]) => {
+
+            const itemsHtml = items.map(res => {
+                const isActive = false; // 根据逻辑设置
+                return `
+                <button
+                    class="btn btn-light d-flex align-items-center
+                           px-2 py-1 small ${isActive ? 'active' : ''}"
+                    onclick="selectExchangeResource(${res.id})"
+                    data-res-id="${res.id}"
+                    title="ID: ${res.id}">
+
+                    <span class="d-flex align-items-center gap-1">
+                        ${renderIcon(res.icon)}
+                        <span class="fw-medium">${res.name}</span>
+                    </span>
+                </button>
+            `;
+
+            }).join('');
+
+            return `
+<div class="resource-group mb-3">
+    <div class="px-3 py-2 fw-bold small text-muted bg-light border-bottom">
+        ${category}
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 px-2 py-2">
+        ${itemsHtml}
+    </div>
+</div>
+`;
         }).join('');
 
         container.innerHTML = html;
     }
 
+
     function selectExchangeResource(resourceId) {
         // 1. 找到之前那个 active 的元素，把它打回原形
+        console.log("Selecet exchange change", resourceId)
         const prevActive = document.querySelector('#resource-category-list .active');
         if (prevActive) {
             prevActive.classList.remove('active');
@@ -170,6 +210,8 @@
         let res = await fetch(`/api/exchange/simple/${resource_id}`);
         let price = await res.json()
         document.querySelector("#least_market_price").innerText = `$${price["market_price"]}`
+        document.querySelector("#base_price").innerText = `$${price["base_price"]}`
+
         const orders = data['orders']
 
         const askBody = document.querySelector('.orderbook-ask').querySelector('tbody');
@@ -193,7 +235,7 @@
 
             return `
             <tr class="cursor-pointer ${rowClass}" onclick="fillOrderForm('buy', ${order.price_per_unit}, ${order.quality})">
-                <td class="text-start ps-3 text-muted">Q0 ${mineBadge}</td>
+                <td class="text-start ps-3 text-muted">Q0 ${mineBadge} ${order.id}</td>
                 <td class="fw-bold ${isMine ? 'text-dark' : 'text-danger'}">$${order.price_per_unit.toFixed(3)}</td>
                 <td class="pe-3">${(order.quantity).toLocaleString()}</td>
             </tr>
@@ -210,7 +252,7 @@
             <tr class="cursor-pointer ${rowClass}" onclick="fillOrderForm('sell', ${order.price_per_unit}, ${order.quality})">
                 <td class="ps-3">${(order.quantity).toLocaleString()}</td>
                 <td class="fw-bold ${isMine ? 'text-dark' : 'text-success'}">$${order.price_per_unit.toFixed(3)}</td>
-                <td class="text-end pe-3 text-muted">${mineBadge} Q0</td>
+                <td class="text-end pe-3 text-muted">${order.id} ${mineBadge} Q0 </td>
             </tr>
         `;
         }).join('') || '<tr><td colspan="3" class="text-center text-muted small py-3">暂无需求</td></tr>';

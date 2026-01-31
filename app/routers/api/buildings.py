@@ -101,5 +101,24 @@ async def remove_building(session: SessionDep,
                           player_building_id: int,
                           player_in: PlayerPublic = Depends(get_current_user)
                           ):
-    crud_building.delete_player_building(session, player_building_id)
-    session.commit()
+    task = crud_building.get_building_task_by_id(session, player_building_id)
+    if task:
+        raise HTTPException(status_code=400, detail="完成任务后再删除")
+    pb = crud_building.get_player_building_by_id(session, player_building_id)
+    building_meta = crud_building.get_building_meta_by_id(session, pb.building_meta_id)
+    refund_cash = building_meta.building_cost * 0.6
+    try:
+        AccountingService.change_cash(session, player_in.id, refund_cash, TransactionActionType.BUILD_DESTROY_REFUND, player_in.id)
+        AccountingService.change_cash(session, GOVERNMENT_PLAYER_ID, -refund_cash, TransactionActionType.BUILD_DESTROY_COST, GOVERNMENT_PLAYER_ID)
+        player = crud_player.get_player_by_id(session, player_in.id)
+        await playerService.send_update_cash(player_in.name, player.cash)
+        session.delete(pb)
+        session.commit()
+    except GameError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=e.message)
+    except Exception as e:
+        session.rollback()
+        logger.exception("Remove building err!")
+        raise HTTPException(status_code=400, detail=str(e))
+

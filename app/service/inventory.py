@@ -30,17 +30,16 @@ class InventoryService:
         db_inventory.quantity += quantity
 
         if db_inventory.quantity < 0:
-            raise GameError("库存资源不足")
+
+            raise GameError(f"库存资源不足 {resource_id}, change:{quantity}, after:{db_inventory.quantity}" )
 
         session.add(db_inventory)
         session.flush()
-        logger.info("change cash: ", db_inventory)
 
     async def send_notify(self, message: str):
         """ 库存更新通知 """
 
         pass
-
 
 inventory_service = InventoryService()
 manager.register("inventory", inventory_service)

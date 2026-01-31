@@ -1,0 +1,270 @@
+<!-- 修改配方 Modal -->
+<div class="modal fade" id="editRecipeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title font-monospace"><i class="bi bi-cpu me-2"></i>实体配方与资源属性引擎</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body bg-light">
+                <form id="editRecipeForm">
+                    <input type="hidden" id="edit_resource_id">
+
+                    <div class="row g-4">
+                        <div class="col-md-5">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header bg-white fw-bold"><i class="bi bi-box-seam me-2"></i>产出定义
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6 mb-3">
+                                            <label class="form-label small fw-bold text-muted">资源标识</label>
+                                            <input type="text" id="edit_output_name" class="form-control fw-bold"
+                                                   readonly>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label class="form-label small fw-bold text-muted" for="chooseBuilding">选择建筑</label>
+                                            <select class="form-select form-control fw-bold" id="chooseBuilding">
+                                            </select>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-6 mb-3">
+                                            <label class="form-label small fw-bold text-primary">基础定价 (Base
+                                                P)</label>
+                                            <input type="number" id="edit_base_price" class="form-control" step="0.01">
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label class="form-label small fw-bold text-success">时产速率 (Q/h)</label>
+                                            <input type="number" id="edit_per_hour" class="form-control" required
+                                                   min="0.001" step="0.001">
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">需求权重 (Market Weight: <span
+                                                id="weight_val_display">50</span>)</label>
+                                        <input type="range" id="edit_weight" class="form-range" min="1" max="100"
+                                               oninput="document.getElementById('weight_val_display').innerText=this.value">
+                                        <div class="d-flex justify-content-between smaller text-muted">
+                                            <span>非必需品</span>
+                                            <span>生命线资源</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label small fw-bold">波动策略</label>
+                                        <select id="edit_volatility" class="form-select form-select-sm">
+                                            <option value="stable">稳健型 (CPI 挂钩)</option>
+                                            <option value="volatile">高频波动 (市场投机)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-7">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold"><i class="bi bi-flask me-2"></i>投入配方 (Ingredients)</span>
+                                    <button type="button" class="btn btn-sm btn-outline-primary border-0"
+                                            onclick="addIngredientRow()">
+                                        <i class="bi bi-plus-circle me-1"></i>追加原料
+                                    </button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive" style="max-height: 320px;">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                            <tr style="font-size: 0.75rem;">
+                                                <th class="ps-3">原材料</th>
+                                                <th width="150">消耗数量</th>
+                                                <th width="50">操作</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody id="ingredients_list">
+                                            <tr class="ingredient-row">
+                                                <td class="ps-3">
+                                                    <select class="form-select form-select-sm res-select border-0 bg-transparent">
+                                                        <option value="power">电力 (Power)</option>
+                                                        <option value="water">水 (Water)</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="number"
+                                                           class="form-control form-control-sm res-amount border-0 bg-transparent"
+                                                           placeholder="0.00">
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm text-danger border-0"
+                                                            onclick="this.closest('tr').remove()">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="p-3 bg-light border-top">
+                                        <div class="form-text smaller text-muted">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            <strong>平衡提示：</strong>
+                                            当前时产为 <span id="hint_per_hour">--</span>，
+                                            建议总原材料价值低于产出价值的 <span class="text-primary">85%</span> 以保证
+                                            Bot 生产动力。
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer border-top-0 bg-light">
+                <div class="me-auto text-muted small">
+                    <i class="bi bi-database-check me-1"></i> 数值修改将实时影响全局经济循环
+                </div>
+                <button type="button" class="btn btn-dark px-4" data-bs-dismiss="modal" onclick="submitEditRecipe()">
+                    同步协议修改
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.getElementById('editRecipeModal').addEventListener('show.bs.modal', async function (event) {
+        await window.gameDataPromise
+        const button = event.relatedTarget;
+        const resource_id = parseInt(button.getAttribute('data-bs-id'));
+
+        const resource = window.gameData.resources.find(r => r.id === resource_id);
+        const recipe = window.gameData.recipes.find(r => r.output_resource_id === resource_id)
+        if (!resource) {
+            return;
+        }
+        console.log("edit: ", recipe, resource)
+
+        // 2. 填充左侧：产出与定价
+        document.getElementById('edit_resource_id').value = resource.id;
+        document.getElementById('edit_output_name').value = resource.name;
+        document.getElementById('edit_base_price').value = resource.base_price;
+        document.getElementById('edit_per_hour').value = recipe ? recipe.per_hour:0;
+
+        let html = '';
+        window.gameData.buildings.forEach(b => {
+            html += `<option value="${b.id}">${b.name}</option>`;
+        });
+        document.getElementById("chooseBuilding").innerHTML = html;
+        if (recipe) {
+            document.getElementById('chooseBuilding').value = recipe.building_meta_id;
+        }
+
+        // 3. 渲染权重滑动条
+        const weightInput = document.getElementById('edit_weight');
+        weightInput.value = resource.base_weight || 50;
+        document.getElementById('weight_val_display').innerText = weightInput.value;
+
+        // 4. 渲染波动率下拉框
+        document.getElementById('edit_volatility').value = resource.volatility || 'stable';
+
+        // 5. 渲染右侧：成本配方表格
+        const tbody = document.getElementById('ingredients_list');
+        tbody.innerHTML = ''; // 先清空现有行
+
+        if (recipe && recipe.inputs.length > 0) {
+            // 循环调用统一的行渲染函数
+            recipe.inputs.forEach(ing => {
+                addIngredientRow(ing.resource_id, ing.quantity);
+            });
+        } else {
+            // 如果没有配方，显示一行提示
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted small py-3">该资源目前为基础产出，无原料消耗</td></tr>`;
+        }
+    });
+
+
+    // 动态添加原材料行
+    /**
+     * 添加或渲染配方行 (Table Row 格式)
+     * @param {string|number} selectedId - 选中的资源ID (可选)
+     * @param {number} amount - 消耗数量 (可选)
+     */
+    function addIngredientRow(selectedId = '', amount = '') {
+        const tbody = document.getElementById('ingredients_list');
+
+        // 如果当前显示的是“暂无数据”的提示，点击添加时先清空它
+        if (tbody.querySelector('.text-center')) {
+            tbody.innerHTML = '';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'ingredient-row';
+
+        // 动态生成下拉菜单的选项，匹配当前全局资源列表
+        const optionsHtml = window.gameData.resources.map(r => `
+        <option value="${r.id}" ${r.id === selectedId ? 'selected' : ''}>
+            ${r.name}
+        </option>
+    `).join('');
+
+        tr.innerHTML = `
+        <td class="ps-3">
+            <select class="form-select form-select-sm res-select border-0 bg-transparent">
+                <option value="" ${selectedId === '' ? 'selected' : ''} disabled>选择资源...</option>
+                ${optionsHtml}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm res-amount border-0 bg-transparent"
+                   value="${amount}" placeholder="0.00" step="0.001">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('tr').remove()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </td>
+    `;
+
+        tbody.appendChild(tr);
+    }
+
+    // 提交时的逻辑处理
+    async function submitEditRecipe() {
+        const resource_id = parseInt(document.getElementById('edit_resource_id').value)
+        const recipe = window.gameData.recipes.find(r => r.output_resource_id === resource_id)
+
+        const data = {
+            resource_id: resource_id,
+            base_price: parseFloat(document.getElementById('edit_base_price').value),
+            base_weight: parseFloat(document.getElementById('edit_weight').value),
+
+            recipe_id: recipe ? recipe.id : null,
+            per_hour: parseFloat(document.getElementById('edit_per_hour').value),
+            building_meta_id: document.getElementById('chooseBuilding').value,
+
+            inputs: []
+
+        };
+
+        // 收集配方行数据
+        document.querySelectorAll('.ingredient-row').forEach(row => {
+            data.inputs.push({
+                resource_id: parseInt(row.querySelector('.res-select').value),
+                quantity: parseInt(row.querySelector('.res-amount').value)
+            });
+        });
+
+        console.log("提交到后端的 JSON:", data);
+        const response = await fetch('/api/admin/resources/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data),
+            credentials: 'include'
+        });
+        const resp = await response.json();
+        console.log(resp)
+    }
+</script>

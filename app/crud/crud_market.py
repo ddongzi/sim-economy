@@ -24,23 +24,24 @@ def get_order_by_id(session: Session, order_id: int) -> MarketOrder | None:
 def get_active_orders_by_resource(
         session: Session,
         resource_id: int,
-        limit: int = 100
+        limit: int = 10
 ):
     """
     获取订单book, 卖单按价格升序 (由低到高)，买单按价格降序 (由高到低)
     """
-    statement = select(MarketOrder).where(
+    statement = (select(MarketOrder).where(
         MarketOrder.resource_id == resource_id,
         MarketOrder.status == 0
-    ).where(MarketOrder.order_type == "sell").order_by(MarketOrder.price_per_unit.asc())
+    ).where(MarketOrder.order_type == "sell")
+                 .order_by(MarketOrder.price_per_unit.asc(),MarketOrder.id.asc()).limit(limit))
     asks = session.exec(statement).all()
 
-    statement = select(MarketOrder).where(
+    statement = (select(MarketOrder).where(
         MarketOrder.resource_id == resource_id,
         MarketOrder.status == 0
-    ).where(MarketOrder.order_type == "buy").order_by(MarketOrder.price_per_unit.desc())
+    ).where(MarketOrder.order_type == "buy")
+                 .order_by(MarketOrder.price_per_unit.desc(), MarketOrder.id.asc()).limit(limit))
     bids = session.exec(statement).all()
-
     return {
         "asks":asks,
         "bids":bids
@@ -55,7 +56,7 @@ def get_sell_orders_where_le_price(session: Session,
         MarketOrder.order_type == "sell",
         MarketOrder.price_per_unit <= price,
         MarketOrder.status == 0,
-    ).order_by(MarketOrder.price_per_unit.asc(), MarketOrder.created_at.asc())
+    ).order_by(MarketOrder.price_per_unit.asc(), MarketOrder.id.asc())
     return session.exec(statement).all()
 
 def get_buy_orders_where_ge_price(session: Session,
@@ -68,7 +69,7 @@ def get_buy_orders_where_ge_price(session: Session,
         MarketOrder.order_type == "buy",
         MarketOrder.price_per_unit >= price,
         MarketOrder.status == 0,
-    ).order_by(MarketOrder.price_per_unit.desc(), MarketOrder.created_at.desc())
+    ).order_by(MarketOrder.price_per_unit.desc(), MarketOrder.id.asc())
     return session.exec(statement).all()
 
 def update_order_filled_quantity(
@@ -114,7 +115,8 @@ def total_locked_buy_cash(session:SessionDep) ->int:
     """ 交易所中买单锁定的金额 """
     statement = select(func.sum(MarketOrder.price_per_unit * (MarketOrder.total_quantity - MarketOrder.filled_quantity))).where(
         MarketOrder.order_type == "buy",
-        MarketOrder.status == 0
+        MarketOrder.status == 0,
+        MarketOrder.player_id != 0
     )
     result = session.exec(statement).one()
     return int(result or 0)
@@ -159,21 +161,7 @@ def get_recent_trades_by_resource(session: Session, resource_id: int, limit: int
     return session.exec(statement).all()
 
 
-def get_24h_volume_stats(session: Session):
-    """
-    宏观数据核心：计算过去 24 小时全服总成交额和总订单数
-    """
-    time_threshold = datetime.utcnow() - timedelta(hours=24)
-    statement = select(
-        func.sum(ExchangeTradeHistory.total_amount).label("total_volume"),
-        func.count(ExchangeTradeHistory.id).label("trade_count")
-    ).where(ExchangeTradeHistory.created_at >= time_threshold)
 
-    result = session.exec(statement).first()
-    return {
-        "volume": result[0] or 0.0,
-        "count": result[1] or 0
-    }
 def get_resource_market_lowest_sell_order(session: Session, resource_id: int) -> MarketOrder:
     """ 最低卖价 """
     statement = select(MarketOrder).where(

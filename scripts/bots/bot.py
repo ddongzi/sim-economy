@@ -3,20 +3,41 @@ from time import sleep
 import httpx
 import asyncio
 from datetime import datetime, timedelta
-
+import random
 from anyio import wait_writable
 
 from app.routers.api.task import product
 
 import logging
+
 logger = logging.getLogger(__name__)
+
+
 class BaseBot:
-    def __init__(self, username, password="111", base_url="http://localhost:8000"):
+    gameData = None
+    def __init__(self, username, password="111111", base_url="http://localhost:8000"):
         self.username = username
         self.password = password
         self.token = None
-        self.client = httpx.AsyncClient(base_url=base_url, follow_redirects=True)
-        self.gameData = {}
+        self.client = httpx.AsyncClient(base_url=base_url, follow_redirects=True,timeout=15.0)
+        # 核心：增加状态标记
+        self.is_initialized = False
+        self.player = None
+
+    @classmethod
+    async def load_shared_data(cls, client):
+        """类方法：所有实例共用一个 gameData"""
+        if cls.gameData is None:  # 确保只请求一次
+            resp = await client.get("/api/gamedata")
+            cls.gameData = resp.json()
+            logger.info("游戏gamedata已加载到类属性中")
+    async def sync_player(self):
+
+        resp = await self.client.get("/api/player/me")
+        if resp.status_code == 200:
+            self.player = resp.json()
+        logger.info(f"Player info {self.player}")
+
     async def login(self):
 
         resp = await self.client.post("/api/player/register", json={"name": self.username, "email": "1@q.com",
@@ -25,15 +46,10 @@ class BaseBot:
         # 验证是否登录成功
         if resp.status_code == 200:
             logger.info(f"机器人 {self.username} 登录成功")
-            # 请求静态gamedata
-            resp = await self.client.get("/api/gamedata")
-            if resp.status_code == 200:
-                self.gameData = resp.json()
+
         else:
             logger.info(f"登录失败: {self.username} {resp.text}")
-
-
-
+        await self.sync_player()
 
 
 # ---------------------------------------------------------
