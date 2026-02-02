@@ -153,8 +153,20 @@ class ProducerBot(BaseBot):
                 await self.buy_market_order(input_resource_id, buy_qty)
         logger.info(f"{self.username} try purchase done.")
 
+    async def try_claim(self):
+        # 先领取完成的任务
+        for building_id in self.buildings:
+            resp = await self.client.get(f"/api/task/{building_id}")
+            if resp.status_code == 200:
+                # 有任务在忙
+                task = resp.json()
+                if datetime.fromisoformat(task['end_time']) < datetime.now():
+                    # 任务需要领取.
+                    resp = await self.client.get(f"/api/task/claim/{building_id}")
+
     async def try_produce(self):
         """ 2. 能产则产：检查原材料是否足够 """
+
         await self.sync_inventory()
         # 检查所有原材料是否都满足配方
         total_quantity = sys.maxsize
@@ -164,23 +176,21 @@ class ProducerBot(BaseBot):
             res_id = input_res['resource_id']
             qty = input_res['quantity']
             total_quantity = min(self.inventory.get(res_id, 0) // qty, total_quantity)
+
+        every_quantity = math.floor(total_quantity / 12)
+
         if total_quantity <= 0:
             return
-        every_quantity = math.floor(total_quantity / 12)
         if every_quantity <= 0:
-            return
+            every_quantity = 1
         # 找到你那 12 个建筑中空闲的进行生产
         for building_id in self.buildings:
             resp = await self.client.get(f"/api/task/{building_id}")
             if resp.status_code == 200:
-                # 有任务在忙
-                task = resp.json()
-                if datetime.fromisoformat(task['end_time']) < datetime.now():
-                    # 任务需要领取. 先领取，下一次再生产
-                    resp = await self.client.get(f"/api/task/claim/{building_id}")
+                # 有任务
                 continue
             if resp.status_code == 400:
-                # 建筑空闲
+
                 await self.client.post("/api/task/create", json={
                     "resource_id": self.resource_id,
                     "quantity": every_quantity,
@@ -248,6 +258,7 @@ class ProducerBot(BaseBot):
         while True:
             try:
                 await self.sync_inventory()  # 每次循环前先看一眼包里有啥
+                await self.try_claim()
                 await self.try_purchase()
                 await self.try_produce()
                 await self.try_sell()

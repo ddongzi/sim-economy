@@ -18,7 +18,7 @@ async def main():
     total_bots = 80
     bot_config = [
         {"res_id": 1, "meta": "water_", "name": "水", "w": 20},  # 基
-        {"res_id": 2, "meta": "power_plant_", "name": "电", "w": 40},  # 工业核心
+        {"res_id": 2, "meta": "power_plant_", "name": "电", "w": 0},  # 工业核心
         {"res_id": 9, "meta": "mine_plant_", "name": "土", "w": 10},  # 基建与农业必备
 
         {"res_id": 3, "meta": "farm_", "name": "小麦", "w": 15},
@@ -29,9 +29,9 @@ async def main():
         {"res_id": 5, "meta": "bakery_", "name": "面包", "w": 7},
 
         {"res_id": 6, "meta": "house_assembly_plant_", "name": "普通房", "w": 5},
-        {"res_id": 10, "meta": "house_assembly_plant_", "name": "别墅", "w": 2},
+        {"res_id": 10, "meta": "house_assembly_plant_", "name": "别墅", "w": 5},
 
-        {"res_id": 16, "meta": "steel_mill_", "name": "钢铁", "w": 5},
+        {"res_id": 16, "meta": "steel_mill_", "name": "钢铁", "w": 15},
         {"res_id": 15, "meta": "mine_plant_", "name": "铁矿石", "w": 15},
     ]
     total_weight = sum(config['w'] for config in bot_config)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter,WebSocketDisconnect
 from fastapi import WebSocket
 from typing import Dict
-from app.service.chat_service import ChatService
+from app.service import ChatService
 from abc import ABC, abstractmethod
 from app.service.ws import manager
 import logging

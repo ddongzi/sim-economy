@@ -312,7 +312,7 @@ class TransactionLog(SQLModel, table=True):
     __tablename__ = "transaction_log"
     id: int = Field(default=None, primary_key=True)
     player_id: int = Field(foreign_key="player.id")
-    action_type: int = Field(default=-1,description="0交易 1任务 3消耗 4 退款")
+    action_type: int
     before_balance: float= Field(default=0, description="变动余额")
     change_amount: float = Field(default=0, description="变动金额")
     after_balance: float = Field(default=0, description="变动后余额")
@@ -454,3 +454,32 @@ class UpdateResourceRecipeRequest(BaseModel):
 
     # 如果需要同时修改原材料，可以加个列表
     inputs: Optional[List[RecipeRequirementCreate]] = None
+
+class LedgerLogFull(BaseModel):
+    # 流水详细话
+
+    time: datetime
+    type: int
+    type_display: str
+    description: str
+    change: float = Field(default=0)
+    balance_after: float = Field(default=0)
+
+class PlayerEconomySnapshot(SQLModel, table = True):
+    """ 定期 """
+    __tablename__ = "player_economy_snapshot"
+    id: int = Field(default=None, primary_key=True)
+    player_id: int = Field(default=None, foreign_key="player.id")
+    cash: float = Field(default=0)
+    building_valuation: float = Field(default=0)
+    warehouse_valuation: float = Field(default=0)
+    snap_time: datetime = Field(default_factory=datetime.now)
+
+
+class GameConfig(SQLModel, table=True):
+    __tablename__ = "game_config"
+    id: int = Field(default=None, primary_key=True)
+    key: str = Field(unique=True, index=True, max_length=50)
+    value: str
+    group:str
+    description: Optional[str] = None

@@ -7,11 +7,8 @@ from app.dependencies import get_current_user
 from app.crud import crud_inventory, crud_market, crud_resources, crud_player
 from app.models import MarketOrder, MarketOrderCreate, PlayerPublic, MarketOrderPublic, TransactionActionType
 from app.core.error import GameError
-from app.service.accounting import AccountingService
-from app.service.exchange import match_order, calculate_price_per_unit, exchange_service
+from app.service import AccountingService, ExchangeService, PlayerService, InventoryService
 import asyncio
-from app.service.inventory import InventoryService
-from app.service.playerService import playerService
 from app.service.ws import manager
 
 router = APIRouter()
@@ -53,11 +50,11 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
             AccountingService.change_cash(session, player_in.id, -total_cost,
                                           TransactionActionType.MARKET_BUY, order.id)
         # 撮合订单
-        match_order(session, order)
+        ExchangeService.match_order(session, order)
         session.commit()
 
         player = crud_player.get_player_by_id(session, player_in.id)
-        await playerService.send_update_cash(player.name, player.cash)
+        await PlayerService.playerWs.send_update_cash(player.name, player.cash)
 
         # 撮合完成后，调用广播
         # 这个 broadcast 不在 websocket 循环里，而是在业务逻辑里
@@ -78,7 +75,7 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
             op.quantity = o.total_quantity - o.filled_quantity
             ret_orders['bids'].append(op.model_dump(mode="json"))
         logger.info("Match ok. will ws broadcast")
-        await exchange_service.broadcast_to_resource(order.resource_id, {
+        await ExchangeService.exchangeWs.broadcast_to_resource(order.resource_id, {
             "type": "exchange",
             "sub_type":"update",
             "data": {
@@ -106,7 +103,7 @@ async def get_orders(session: SessionDep, resource_id: int,
 async def get_suggested_price(session: SessionDep, resource_id: int,
                               strategy_name: str | None = None,
                               player_in: PlayerPublic = Depends(get_current_user)):
-    price = calculate_price_per_unit(session, resource_id, strategy_name)
+    price = ExchangeService.calculate_price_per_unit(session, resource_id, strategy_name)
     return {"suggest_price": price}
 
 

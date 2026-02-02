@@ -1,12 +1,15 @@
-from app.models import Inventory,Resource  # 确保路径正确
+from app.models import Inventory, Resource  # 确保路径正确
 from app.db.session import SessionDep
-from sqlmodel import  select,func
+from sqlmodel import select, func
+
 
 def get_player_inventory(session: SessionDep, player_id: int) -> list[Inventory]:
     """获取玩家所有库存"""
     statement = select(Inventory).where(Inventory.player_id == player_id)
     return session.exec(statement).all()
-def get_player_inventory_resource(session: SessionDep, player_id: int, resource_id:int) -> Inventory:
+
+
+def get_player_inventory_resource(session: SessionDep, player_id: int, resource_id: int) -> Inventory:
     """获取玩家某个资源库存"""
     statement = select(Inventory).where(
         Inventory.player_id == player_id,
@@ -59,9 +62,21 @@ def consume_resource(session: SessionDep, player_id: int, resource_id: int, amou
     db_inventory.quantity -= amount
     return True
 
+
 def get_all_assets_value(session: SessionDep):
     """ 仓库内资源总价值，以base_price计算"""
     statement = select(func.sum(Inventory.quantity * Resource.base_price)
                        ).join(Resource, Inventory.resource_id == Resource.id).where(Inventory.player_id != 0)
+    result = session.exec(statement).one()
+    return int(result or 0)
+
+
+def get_player_all_assets_value(session: SessionDep, player_id: int):
+    """ 仓库内资源总价值，以base_price计算"""
+    statement = (select(func.sum(Inventory.quantity * Resource.base_price)
+                        )
+                 .join(Resource, Inventory.resource_id == Resource.id)
+                 .where(Inventory.player_id == player_id)
+                 )
     result = session.exec(statement).one()
     return int(result or 0)

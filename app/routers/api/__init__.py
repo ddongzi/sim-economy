@@ -10,9 +10,7 @@ from app.models import BuildingMetaPublic, ResourcePublic, Recipe, RecipePublic,
     PlayerPublic, GovernmentOrder, TransactionActionType, GovernmentOrderDelivery
 from app.routers.api import buildings, admin, recipe,player,task,inventory,exchange,public,contract
 from app.db.session import SessionDep
-from app.service.accounting import AccountingService
-from app.service.inventory import InventoryService
-from app.service.playerService import playerService
+from app.service import AccountingService,PlayerService,InventoryService
 import logging
 logger = logging.getLogger(__name__)
 api_router = APIRouter(
@@ -70,7 +68,7 @@ async def govern_purchase(session: SessionDep,
         InventoryService.change_resource(session, GOVERNMENT_PLAYER_ID, order.resource_id, data.quantity)
         session.commit()
         player = crud_player.get_player_by_id(session, current_user.id)
-        await playerService.send_update_cash(current_user.name, player.cash)
+        await PlayerService.playerWs.send_update_cash(current_user.name, player.cash)
     except GameError as e:
         session.rollback()
         raise HTTPException(status_code=400, detail=e.message)

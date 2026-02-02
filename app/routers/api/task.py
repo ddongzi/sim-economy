@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 from app.crud import crud_building_task, crud_inventory, crud_player, crud_recipe
 from app.logic.task import calculate_task_cost
 from app.models import PlayerPublic, BuildingTaskCreate, BuildingTaskBase, TransactionActionType, BuildingTask
-from app.service.accounting import AccountingService
-from app.service.inventory import InventoryService
-from app.service.playerService import playerService
+from app.service import AccountingService
+from app.service import InventoryService
+from app.service import PlayerService
 import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -49,7 +49,7 @@ async def product(session: SessionDep, building_task: BuildingTaskCreate,
                                              -input.quantity * building_task.quantity)
         session.commit()
         player = crud_player.get_player_by_id(session, player_in.id)
-        await playerService.send_update_cash(player_in.name, player.cash)
+        await PlayerService.playerWs.send_update_cash(player_in.name, player.cash)
     except GameError as e:
         session.rollback()
         logger.error(e)

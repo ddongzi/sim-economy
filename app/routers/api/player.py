@@ -1,17 +1,19 @@
 import json
 from json import JSONDecoder
 
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, Query
+from sqlmodel import Session, Field
 
 from app.core.config import INITIAL_CASH, GOVERNMENT_PLAYER_ID
 from app.db.session import SessionDep  # 假设你的 session 依赖项位置
 from app.crud import crud_player
 from app.dependencies import create_access_token, get_current_user
 from app.models import PlayerCreate, PlayerPublic, PlayerLogin, TransactionActionType
-from app.service.accounting import AccountingService
+from app.service import AccountingService,PlayerService
 import base64
+
 router = APIRouter()
+
 
 # -----------------------------------------------------------------------------
 # 1. 注册 (Register)
@@ -74,7 +76,11 @@ async def login(
         samesite="lax",  # 防止 CSRF 攻击
         secure=False  # 如果是生产环境 https，请设为 True
     )
+
+    PlayerService.create_player_economy_snapshot(player.id)
+
     return {"status": "ok"}
+
 
 # -----------------------------------------------------------------------------
 # 3. 登出 (Logout)
@@ -97,3 +103,31 @@ async def read_current_player(
     if not player:
         raise HTTPException(status_code=404, detail="玩家不存在")
     return player
+
+
+@router.get("/economy/ledger")
+async def ledgers(
+        session: SessionDep,
+        player: PlayerPublic = Depends(get_current_user),
+        page:int = Query(default=1, ge=1),
+        limit: int = Query(default= 10, le= 100),
+        ledger_type: int= Query(default=None)
+):
+    # 返回流水记录，
+    return AccountingService.get_all_ledger(session, player.id, page, limit, ledger_type)
+
+
+@router.get("/economy/overview")
+async def economy_overview(
+        session: SessionDep,
+        player: PlayerPublic = Depends(get_current_user)
+):
+
+    PlayerService.create_player_economy_snapshot(player.id)
+
+    return {
+        "status": "success",
+        "data": {
+            "history_curve": PlayerService.get_history_curve(session, player_id= player.id)
+        }
+    }

@@ -79,7 +79,7 @@ function getUserInfo() {
  * @param remainingSec
  * @returns {string}
  */
-function formatTime(remainingSec) {
+function formatRemainSec(remainingSec) {
     if (remainingSec <= 0) return "00:00:00";
 
     const hours = Math.floor(remainingSec / 3600);
@@ -92,6 +92,14 @@ function formatTime(remainingSec) {
     const s = String(seconds).padStart(2, '0');
 
     return `${h}:${m}:${s}`;
+}
+
+function formatTime(timeStr) {
+    const date = new Date(timeStr);
+
+// 转换为：2026/1/20 08:17:45 (假设你在北京时区)
+    return  date.toLocaleString();
+
 }
 
 

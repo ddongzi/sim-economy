@@ -219,7 +219,6 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
     // 初始化 ECharts 实例
     let historyChart, sectorChart;
@@ -391,7 +390,7 @@
         policyEl.innerHTML = `
             <i class="bi bi-info-circle-fill me-1 text-info"></i>
             当前政策：${data.current_policy.title} (${data.current_policy.content})
-            <span class="text-muted font-monospace ms-auto" id="policy-timer">${formatTime(remainingSec)}</span>
+            <span class="text-muted font-monospace ms-auto" id="policy-timer">${formatRemainSec(remainingSec)}</span>
         `;
 
         // 4. 渲染日志流

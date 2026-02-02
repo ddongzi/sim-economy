@@ -1,5 +1,5 @@
 from typing import List
-from app.service.playerService import playerService
+from app.service import PlayerService
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import SQLModel, select, or_
 
@@ -11,7 +11,7 @@ from app.models import PlayerBuilding, PlayerBuildingPublic, PlayerPublic, Playe
     TransactionActionType, BuildingLevelsConfig
 
 from app.crud import crud_building,crud_player
-from app.service.accounting import AccountingService
+from app.service import AccountingService
 import logging
 logger = logging.getLogger("fastapi")
 
@@ -54,7 +54,10 @@ async def create_building(session: SessionDep, pb: PlayerBuildingCreate,
         crud_building.create_player_building(session, pb, player_in.id)
         session.commit()
         player = crud_player.get_player_by_id(session, player_in.id)
-        await playerService.send_update_cash(player_in.name, player.cash)
+        await PlayerService.playerWs.send_update_cash(player_in.name, player.cash)
+    except GameError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=e.message)
     except Exception as e:
         session.rollback()
         logger.exception("Construct building err!")
@@ -86,7 +89,7 @@ async def upgrade_building(session: SessionDep,
                                       TransactionActionType.SYSTEM_BUILDING_UPGRADE_REVENUE, player_building.id)
         session.commit()
         player = crud_player.get_player_by_id(session, player_in.id)
-        await playerService.send_update_cash(player_in.name, player.cash)
+        await PlayerService.playerWs.send_update_cash(player_in.name, player.cash)
     except GameError as e:
         session.rollback()
         logger.exception("Upgrade building err!")
@@ -111,7 +114,7 @@ async def remove_building(session: SessionDep,
         AccountingService.change_cash(session, player_in.id, refund_cash, TransactionActionType.BUILD_DESTROY_REFUND, player_in.id)
         AccountingService.change_cash(session, GOVERNMENT_PLAYER_ID, -refund_cash, TransactionActionType.BUILD_DESTROY_COST, GOVERNMENT_PLAYER_ID)
         player = crud_player.get_player_by_id(session, player_in.id)
-        await playerService.send_update_cash(player_in.name, player.cash)
+        await PlayerService.playerWs.send_update_cash(player_in.name, player.cash)
         session.delete(pb)
         session.commit()
     except GameError as e:

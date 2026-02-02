@@ -2,7 +2,7 @@ from app.service.ws import WSServiceBase,manager
 import json
 import logging
 logger = logging.getLogger(__name__)
-class ChatService(WSServiceBase):
+class ChatWS(WSServiceBase):
     def __init__(self):
         self.type = "chat"
     async def handle(self, user_name:str, sub_type, data):
@@ -36,3 +36,5 @@ class ChatService(WSServiceBase):
         }
         await manager.send_personal_message(receiver, message)
         await manager.send_personal_message(sender,message)
+chatWs = ChatWS()
+manager.register("chat", chatWs)

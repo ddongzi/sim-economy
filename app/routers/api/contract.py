@@ -7,8 +7,8 @@ from app.db.session import SessionDep
 from datetime import datetime
 from sqlmodel import select, or_
 from app.crud import crud_inventory
-from app.service.accounting import AccountingService
-from app.service.inventory import InventoryService
+from app.service import AccountingService
+from app.service import InventoryService
 import logging
 
 router = APIRouter()

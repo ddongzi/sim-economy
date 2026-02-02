@@ -11,8 +11,8 @@ from app.models import MarketOrder, TransactionActionType, MarketOrderPublic, Pl
 from typing import Dict
 from abc import ABC, abstractmethod
 from sqlmodel import Session, select,func
-from app.service.accounting import AccountingService
-from app.service.inventory import InventoryService
+from app.service import AccountingService
+from app.service import InventoryService
 from app.service.ws import WSServiceBase
 from app.service.ws import manager
 import logging
@@ -454,7 +454,7 @@ def get_market_history(session: Session):
     }
 
 
-class ExchangeService(WSServiceBase):
+class ExchangeWS(WSServiceBase):
 
     def __init__(self):
         """ username , resource id"""
@@ -513,4 +513,5 @@ class ExchangeService(WSServiceBase):
             await manager.send_personal_message(name, msg)
 
 
-exchange_service = ExchangeService()
+exchangeWs = ExchangeWS()
+manager.register("exchange", exchangeWs)

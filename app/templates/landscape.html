@@ -114,7 +114,6 @@ let playerBuildingInstances = null;
             // 1. 调用你的异步 API
             const response = await fetch('/api/buildings');
             playerBuildingInstances = await response.json(); // 假设返回 { buildings: [...] }
-            console.log("instances : ",playerBuildingInstances)
             const totalSlots = 16;
 
             // 清空容器（移除占位符）
@@ -133,7 +132,6 @@ let playerBuildingInstances = null;
                     card.setAttribute('data-id', building.id)
                     card.setAttribute('data-slot-num', i)
                     const now = Date.now() ;
-                    console.log("building : ", i, building)
                     if (building.task) {
                         const end_time = new Date(building.task.end_time).getTime();
                         card.innerHTML += `

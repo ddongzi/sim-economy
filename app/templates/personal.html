@@ -1,0 +1,381 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid py-2 bg-light">
+    <div class="row g-2 mb-2">
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-2 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold me-2"><i class="bi bi-layers-half me-1 text-primary"></i>资产</span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary border-0 active">7D</button>
+                    <button class="btn btn-outline-secondary border-0">30D</button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="multiAssetCurve" class="w-100" style="height: 200px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center border-bottom-0">
+            <div class="fw-bold small">
+                <i class="bi bi-card-list me-1"></i>全科目经济流水 (Ledger)
+            </div>
+            <div class="d-flex gap-2">
+                <div class="input-group input-group-sm">
+                    <button class="btn btn-outline-secondary dropdown-toggle bg-light border-0" type="button"
+                            data-bs-toggle="dropdown" id="current-type-filter">
+                        全部类型
+                    </button>
+                    <ul class="dropdown-menu shadow-sm">
+                        <li><a class="dropdown-item small filter-type" href="#" data-type="all">全部类型</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item small filter-type" href="#" data-type="MARKET">MARKET_SELL</a></li>
+                        <li><a class="dropdown-item small filter-type" href="#" data-type="STRATEGY">政府协议</a></li>
+                        <li><a class="dropdown-item small filter-type" href="#" data-type="TAX">税务支出</a></li>
+                    </ul>
+
+                    <input type="text" id="table-search-input" class="form-control bg-light border-0"
+                           placeholder="搜索流水备注...">
+
+                    <button class="btn btn-light border-0" id="clear-filter"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 font-monospace small">
+                    <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 py-2 text-muted">UTC_TIME</th>
+                        <th class="py-2 text-muted">TYPE</th>
+                        <th class="py-2 text-muted">EVENT_DESC</th>
+                        <th class="py-2 text-end text-muted">DELTA</th>
+                        <th class="py-2 text-end pe-3 text-muted">BALANCE</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td class="ps-3 text-muted">2026-02-01 16:40</td>
+                        <td><span
+                                class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle">MARKET</span>
+                        </td>
+                        <td class="fw-bold">采购 [工业用电 x 500]</td>
+                        <td class="text-end text-danger fw-bold">-$1,250.00</td>
+                        <td class="text-end pe-3 fw-bold">$124,500.80</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 text-muted">2026-02-01 14:12</td>
+                        <td><span
+                                class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">STRATEGY</span>
+                        </td>
+                        <td class="fw-bold">政府回购协议结算 (苹果储备计划)</td>
+                        <td class="text-end text-success fw-bold">+$4,200.00</td>
+                        <td class="text-end pe-3 fw-bold">$125,750.80</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 text-muted">2026-02-01 12:00</td>
+                        <td><span
+                                class="badge rounded-pill bg-warning-subtle text-warning border border-warning-subtle">TAX</span>
+                        </td>
+                        <td class="fw-bold">周期性房产持有税 (地块 #77)</td>
+                        <td class="text-end text-danger fw-bold">-$320.00</td>
+                        <td class="text-end pe-3 fw-bold">$121,550.80</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white py-2 border-top-0 d-flex justify-content-between align-items-center">
+            <small class="text-muted" id="page-info">显示最近 50 条交易记录</small>
+            <nav aria-label="交易记录分页">
+                <ul class="pagination pagination-sm m-0">
+                    <li class="page-item" id="first-btn">
+                        <button class="page-link border-0" type="button"><i class="bi bi-chevron-double-left"></i>
+                        </button>
+                    </li>
+                    <li class="page-item" id="prev-btn">
+                        <button class="page-link border-0" type="button">前一页</button>
+                    </li>
+
+                    <li class="page-item active">
+                        <span class="page-link border-0 fw-bold" id="current-page-num">1</span>
+                    </li>
+
+                    <li class="page-item" id="next-btn">
+                        <button class="page-link border-0" type="button">后一页</button>
+                    </li>
+                    <li class="page-item" id="last-btn">
+                        <button class="page-link border-0" type="button"><i class="bi bi-chevron-double-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+    </div>
+</div>
+
+
+<script>
+    // 为分类下拉菜单添加点击事件
+    document.querySelectorAll('.filter-type').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const type = this.getAttribute('data-type');
+            const params = type === 'all' ? '' : `?type=${type}`;
+
+            // 更新按钮文字展示
+            document.getElementById('current-type-filter').innerText = this.innerText;
+
+            // 重新请求接口并渲染
+            loadLedgerData(params);
+        });
+    });
+</script>
+
+<script>
+    let currentPage = 1;
+    const limit = 10; // 每页显示条数
+    let maxPage = 1;
+
+    /**
+     * 加载并渲染流水表格（支持分页）
+     */
+    async function loadLedgerData(type = 'all', page = 1) {
+        currentPage = page;
+        const typeParam = type === 'all' ? '' : `&type=${type}`;
+
+        // 1. 获取接口数据
+        // 假设接口返回 { status: "success", data: [...], total_count: 125 }
+        try {
+            const res = await fetch(`/api/player/economy/ledger?page=${page}&limit=${limit}${typeParam}`);
+            const result = await res.json();
+            console.log("ledger data: ", result)
+            maxPage = Math.ceil(result.total / limit) || 1;
+            // 2. 渲染表格内容
+            renderTableBody(result);
+
+            // 3. 更新分页 UI 状态
+            updatePaginationUI(result.total, page);
+        } catch (error) {
+            console.error("加载流水失败:", error);
+        }
+    }
+
+    /**
+     * 更新分页按钮的可点击状态和页码显示
+     */
+    function updatePaginationUI(totalCount, page) {
+        const firstBtn = document.getElementById('first-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const lastBtn = document.getElementById('last-btn');
+        const pageNumDisplay = document.querySelector('.pagination .active .page-link');
+        const countDisplay = document.querySelector('.card-footer .text-muted');
+
+        // 更新当前页码文字
+        pageNumDisplay.innerText = page;
+
+        // 更新左侧描述信息
+        countDisplay.innerText = `共 ${totalCount} 条记录 (第 ${page}/${maxPage || 1} 页)`;
+
+        // 处理“前一页”按钮状态
+        if (page <= 1) {
+            prevBtn.classList.add('disabled');
+        } else {
+            prevBtn.classList.remove('disabled');
+        }
+
+        // 处理“后一页”按钮状态
+        if (page >= maxPage) {
+            nextBtn.classList.add('disabled');
+        } else {
+            nextBtn.classList.remove('disabled');
+        }
+    }
+
+    /**
+     * 绑定分页按钮点击事件
+     */
+    function bindPaginationEvents() {
+        document.getElementById('first-btn').onclick = () => {
+            const currentType = document.getElementById('current-type-filter').getAttribute('data-type') || 'all';
+            if (currentPage > 1) loadLedgerData(currentType, 1);
+        };
+        document.getElementById('last-btn').onclick = () => {
+            const currentType = document.getElementById('current-type-filter').getAttribute('data-type') || 'all';
+            if (currentPage < maxPage) loadLedgerData(currentType, maxPage);
+        };
+        document.getElementById('prev-btn').addEventListener('click', function (e) {
+            if (!this.classList.contains('disabled')) {
+                const currentType = document.getElementById('current-type-filter').getAttribute('data-type') || 'all';
+                loadLedgerData(currentType, currentPage - 1);
+            }
+        });
+
+        document.getElementById('next-btn').addEventListener('click', function (e) {
+            if (!this.classList.contains('disabled')) {
+                const currentType = document.getElementById('current-type-filter').getAttribute('data-type') || 'all';
+                loadLedgerData(currentType, currentPage + 1);
+            }
+        });
+    }
+
+    // 别忘了在初始化时调用绑定
+    bindPaginationEvents();
+</script>
+
+<script>
+    // 全局图表实例，方便在缩放时调用 resize()
+    let curveChart, pieChart;
+
+
+    async function initEconomyDashboard() {
+        try {
+            // --- 1. 获取概览数据 (图表与核心指标) ---
+            const overviewRes = await fetch('/api/player/economy/overview');
+            const overview = await overviewRes.json();
+            console.log(overview.data)
+            if (overview.status === 'success') {
+                const d = overview.data;
+
+                // 渲染左侧：复合曲线
+                renderMultiCurve(d.history_curve);
+            }
+
+            // --- 2. 获取流水数据 (表格) ---
+            await loadLedgerData();
+
+        } catch (error) {
+            console.error("金融终端数据加载失败:", error);
+        }
+    }
+
+    /**
+     * 渲染左侧全口径资产曲线
+     */
+    function renderMultiCurve(data) {
+        const chartDom = document.getElementById('multiAssetCurve');
+        if (!chartDom) return;
+        curveChart = echarts.init(chartDom);
+
+        // 转换数据格式
+        const series = data.datasets.map(ds => ({
+            name: ds.name,
+            type: 'line',
+            stack: 'total', // 关键点：所有系列使用相同的 stack 名称进行累加
+            smooth: true,
+            showSymbol: false,
+            areaStyle: {
+                opacity: 0.6 // 填充颜色透明度，让叠加感更自然
+            },
+            emphasis: {
+                focus: 'series' // 鼠标悬浮时高亮显示当前分类，隐藏其他
+            },
+            data: data.labels.map((time, index) => [time, ds.values[index]]),
+            lineStyle: {width: 1}
+        }));
+
+        curveChart.setOption({
+            grid: {top: 40, bottom: 60, left: 60, right: 30},
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {type: 'line'},
+                // 优化 Tooltip 显示：展示各部分数值及总计
+                formatter: function (params) {
+                    let total = 0;
+                    let html = `<div class="fw-bold mb-1">${new Date(params[0].value[0]).toLocaleString()}</div>`;
+
+                    // 注意：由于是堆叠，展示原始值更直观
+                    params.forEach(item => {
+                        const val = item.value[1];
+                        total += val;
+                        html += `<div class="d-flex justify-content-between gap-3 small">
+                                <span>${item.marker} ${item.seriesName}:</span>
+                                <span class="fw-bold font-monospace">${val.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                             </div>`;
+                    });
+
+                    html += `<div class="border-top mt-1 pt-1 d-flex justify-content-between small">
+                            <span class="fw-bold">总计 (Total):</span>
+                            <span class="fw-bold text-primary">${total.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                         </div>`;
+                    return html;
+                }
+            },
+            legend: {
+                bottom: 5,
+                textStyle: {fontSize: 11}
+            },
+            xAxis: {
+                type: 'time',
+                boundaryGap: false,
+                axisLabel: {
+                    formatter: (value) => {
+                        const date = new Date(value);
+                        return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    },
+                    color: '#6c757d'
+                },
+                axisLine: {lineStyle: {color: '#dee2e6'}}
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: function (value) {
+                        if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                        if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+                        return value;
+                    },
+                    color: '#6c757d'
+                },
+                splitLine: {lineStyle: {type: 'dashed', color: '#f0f0f0'}}
+            },
+            series: series
+        });
+    }
+
+    function renderTableBody(result) {
+        const tbody = document.querySelector('tbody');
+        tbody.innerHTML = ''; // 清空
+
+        result.items.forEach(item => {
+            // 根据类型匹配 Badge 颜色 (原生 Bootstrap)
+            const badgeClass = {
+                'MARKET_SELL': 'bg-primary-subtle text-primary border-primary-subtle',
+                'STRATEGY': 'bg-success-subtle text-success border-success-subtle',
+                'TAX': 'bg-warning-subtle text-warning border-warning-subtle'
+            }[item.type_display] || 'bg-secondary-subtle text-secondary';
+
+            // 根据 Delta 正负匹配颜色
+            const deltaClass = item.change >= 0 ? 'text-success' : 'text-danger';
+            const deltaSymbol = item.change >= 0 ? '+' : '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td class="ps-3 text-muted small">${formatTime(item.time)}</td>
+            <td><span class="badge rounded-pill border ${badgeClass}">${item.type_display}</span></td>
+            <td class="fw-bold">${item.description}</td>
+            <td class="text-end fw-bold ${deltaClass}">${deltaSymbol}${item.change.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            <td class="text-end pe-3 fw-bold font-monospace">$${item.balance_after.toLocaleString()}</td>
+        `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 监听缩放
+    window.addEventListener('resize', () => {
+        curveChart && curveChart.resize();
+        pieChart && pieChart.resize();
+    });
+
+    // 页面加载完成后启动
+    initEconomyDashboard();
+</script>
+{% endblock %}

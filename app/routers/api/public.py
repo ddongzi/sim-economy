@@ -8,7 +8,7 @@ from app.dependencies import create_access_token, get_current_user
 from datetime import datetime
 
 from app.models import SpotContract, GovernmentOrder, GovernmentActionLog
-from app.service.exchange import calculate_cpi, calculate_gini, get_cpi_trend, calculate_m1, calculate_total_assets, \
+from app.service.ExchangeService import calculate_cpi, calculate_gini, get_cpi_trend, calculate_m1, calculate_total_assets, \
     calculate_m0, get_all_resource_market_snapshot, get_market_history, \
     calculate_sector_24h_trade_stats, get_24h_trade_stats
 import logging
