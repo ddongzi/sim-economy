@@ -1,3 +1,4 @@
+
 from datetime import datetime,timezone
 from enum import IntEnum, StrEnum
 
@@ -6,12 +7,15 @@ from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship,text
 from time import time
 from typing import Optional, List
-
 # 行业， 建筑物/资源分类
 class Industry(SQLModel, table=True):
     id: str = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True)
     icon: str = Field(default="bi-industry")
+
+    def __str__(self):
+        return f'{self.name}'
+
 
 class PlayerBase(SQLModel):
     name:str
@@ -33,6 +37,8 @@ class Player(PlayerBase, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
+
+
 class PlayerPublic(PlayerBase):
     id:int
     name: str
@@ -45,18 +51,45 @@ class PlayerLogin(PlayerBase):
     password: str
     pass
 
+# --- 1. 建筑原型 (元属性) ---
+class BuildingMetaBase(SQLModel):
+    id: str = Field(primary_key=True)  # 如: "steel_mill"
+    name: str = Field(index=True)
+    building_cost: float = Field(default=0,description="建造成本", nullable=True)
+
+    maintenance_cost: float = Field(default=0, description="生产时候 每分钟维护成本", nullable=True)
+
+class BuildingMeta(BuildingMetaBase, table=True):
+    __tablename__ = "building_meta"
+
+    description: str = Field(default="")
+    icon: str = Field(default="bi-box")
+    levels: List['BuildingLevelsConfig'] = Relationship(back_populates="building_meta")
+
+
+class BuildingMetaPublic(BuildingMetaBase):
+    icon:str
+class BuildingMetaDetail(BuildingMetaBase):
+    icon:str
+    levels: List['BuildingLevelsConfig']
+
+class BuildingMetaCreate(BuildingMetaBase):
+    pass
+
 class ResourceBase(SQLModel):
     name: str
     base_price: float
 class Resource(ResourceBase, table=True):
     id: int = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
+    name: str = Field(index=True, unique=True)
     base_price: float = Field(default=0)
     icon: str = Field(default="bi-box")
     industry_id: str = Field(default=0, foreign_key="industry.id", nullable=True)
 
     base_weight: float = Field(default=1, nullable=True)
     sensitivity: float = Field(default=0, nullable=True)
+
+    industry: Industry = Relationship()
 
 class ResourceCreate(ResourceBase):
     name: str
@@ -83,17 +116,19 @@ class Recipe(RecipeBase, table=True):
     per_hour: float = Field(description="每小时产出", default=0, nullable=True)
     building_meta_id: str = Field(default=None, foreign_key="building_meta.id", nullable=True)
 
+    # 必须
     building: BuildingMeta = Relationship()
     output: Resource = Relationship()
-    inputs: List[RecipeRequirement] = Relationship(back_populates="recipe")
+
+    inputs: List['RecipeRequirement'] = Relationship(back_populates="recipe")
 
 class RecipeCreate(RecipeBase):
-    inputs: List[RecipeRequirementCreate] | None = None
+    inputs: List['RecipeRequirementCreate'] | None = None
 
 class RecipePublic(RecipeBase):
     id: int
     output: ResourcePublic
-    inputs: List[RecipeRequirementPublic]
+    inputs: List['RecipeRequirementPublic']
 
 class RecipeRequirementBase(SQLModel):
     resource_id: int
@@ -107,6 +142,8 @@ class RecipeRequirement(RecipeRequirementBase, table=True):
     quantity: int = Field(default=1)
 
     recipe: Recipe = Relationship(back_populates="inputs")
+    resource: Resource = Relationship()
+
 class RecipeRequirementPublic(RecipeRequirementBase):
     recipe_id: int
     id: int
@@ -122,37 +159,14 @@ class Inventory(InventoryBase, table=True):
     player_id: int = Field(default=None, foreign_key="player.id")
     resource_id: int = Field(default=None, foreign_key="resource.id")
     quantity: int = Field(default=0)
+
+    player: Player = Relationship()
+    resource: Resource = Relationship()
+
 class InventoryPublic(InventoryBase):
     pass
 
-# --- 1. 建筑原型 (元属性) ---
-class BuildingMetaBase(SQLModel):
-    id: str
-    name: str
-    building_cost: float
-    industry_id: str
-    maintenance_cost: float
 
-class BuildingMeta(BuildingMetaBase, table=True):
-    __tablename__ = "building_meta"
-    id: str = Field(primary_key=True)  # 如: "steel_mill"
-    name: str = Field(index=True)
-    building_cost: float = Field(default=0,description="建造成本", nullable=True)
-
-    maintenance_cost: float = Field(default=0, description="生产时候 每分钟维护成本", nullable=True)
-    description: str = Field(default="")
-    icon: str = Field(default="bi-box")
-
-    levels: List[BuildingLevelsConfig] = Relationship(back_populates="building_meta")
-
-class BuildingMetaPublic(BuildingMetaBase):
-    icon:str
-class BuildingMetaDetail(BuildingMetaBase):
-    icon:str
-    levels: List[BuildingLevelsConfig]
-
-class BuildingMetaCreate(BuildingMetaBase):
-    pass
 
 # --- 2. 玩家建筑实例 (状态属性) ---
 class PlayerBuildingBase(SQLModel):
@@ -173,16 +187,15 @@ class PlayerBuilding(PlayerBuildingBase, table=True):
     level: int = Field(default=1)
     # status 建议设为枚举：idle (空闲), upgrading (升级中), producing (生产中)
     status: str = Field(default="idle")
+
     # 关系：关联回原型
-    building_meta: BuildingMeta = Relationship()
+    building_meta: "BuildingMeta" = Relationship()
+    player: "Player" = Relationship()
+
 class PlayerBuildingCreate(PlayerBuildingBase):
     pass
-class PlayerBuildingPublic(PlayerBuildingBase):
-    id: int
-    building_meta: BuildingMetaPublic
-    task: BuildingTask | None = None
-    level: int
-#
+
+
 class BuildingTaskBase(SQLModel):
     resource_id:int
     quantity:int
@@ -207,9 +220,21 @@ class BuildingTask(BuildingTaskBase, table=True):
     duration: int = Field(nullable=True)  # seconds
     end_time: datetime = Field()
 
+    player: Player = Relationship()
+    player_building: PlayerBuilding = Relationship()
+    resource: Resource = Relationship()
+
 class BuildingTaskCreate(BuildingTaskBase):
     player_building_id: int
     start_time: datetime
+
+class PlayerBuildingPublic(PlayerBuildingBase):
+    id: int
+    building_meta: BuildingMetaPublic
+    task: BuildingTask | None = None
+    level: int
+#
+
 
 # MarketOrder 订单
 class MarketOrderBase(SQLModel):
@@ -236,6 +261,10 @@ class MarketOrder(MarketOrderBase, table=True):
     status:int = Field(default=0, index=True)
 
     created_at: datetime = Field()
+
+    player: Player = Relationship()
+    resource: Resource = Relationship()
+
 class MarketOrderPublic(MarketOrderBase):
     id:int
     quantity: int
@@ -263,6 +292,18 @@ class ExchangeTradeHistory(SQLModel, table=True):
     total_amount: float = Field()
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resource: Resource = Relationship()
+    seller: Player = Relationship(
+        sa_relationship_kwargs={
+            "foreign_keys": "[ExchangeTradeHistory.seller_id]" # 关键：指定外键
+        }
+    )
+    buyer: Player = Relationship(
+                sa_relationship_kwargs={
+            "foreign_keys": "[ExchangeTradeHistory.buyer_id]" # 关键：指定外键
+        }
+    )
 
 
 class Asset(SQLModel, table=True):
@@ -304,7 +345,10 @@ class TransactionActionType(IntEnum):
     BUILD_DESTROY_COST = 19
 
     GOVERNMENT_PURCHASE_REVENUE = 20 # 政府采购
-    GOVERNMENT_PURCHASE_COST = 20
+    GOVERNMENT_PURCHASE_COST = 21
+
+    MARKET_TAX_REVENUE = 22
+    MARKET_TAX_COST = 23
 
 
 class TransactionLog(SQLModel, table=True):
@@ -318,6 +362,9 @@ class TransactionLog(SQLModel, table=True):
     after_balance: float = Field(default=0, description="变动后余额")
     created_at: datetime = Field(default_factory=datetime.now)
     ref_id: int = Field(default=None, description="关联的交易id，任务id 等")
+
+    player: Player = Relationship()
+
 class ContractStatus(StrEnum):
     PENDING = "pending"     # 待签署（发起方已创建）
     SIGNED = "signed"       # 已签署（对方已同意，资金/货权交割中或已完成）
@@ -377,8 +424,6 @@ class BuildingLevelsConfig(SQLModel, table=True):
     production_rate: float = Field(default=0, description="生产速率提升", nullable=True)
 
     building_meta: BuildingMeta = Relationship()
-
-
 
 class MarketSnapshot(SQLModel, table=True):
     """ 市场快照：cpi历史 """
@@ -483,3 +528,4 @@ class GameConfig(SQLModel, table=True):
     value: str
     group:str
     description: Optional[str] = None
+

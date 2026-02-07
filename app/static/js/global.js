@@ -73,7 +73,14 @@ function getCookie(name) {
 function getUserInfo() {
     return JSON.parse(atob(getCookie("user_info")));
 }
+function formatGameTime(isoTime) {
+    const diff = (new Date() - new Date(isoTime)) / 1000; // 秒数差
 
+    if (diff < 60) return "刚刚";
+    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+    return "远方的信件";
+}
 /**
  * 秒数 可读字符串
  * @param remainingSec
@@ -229,6 +236,7 @@ function updateMetric(idPrefix, current, total, precision = 2) {
 }
 
 // 定义一个全局 Promise，让其他脚本可以等待
+const gameVersion = localStorage.getItem('gameVersion');
 window.gameDataPromise = (async function () {
     try {
         // 1. 尝试读取本地缓存（同步，极快）
@@ -236,15 +244,20 @@ window.gameDataPromise = (async function () {
         let localData = localDataRaw ? JSON.parse(localDataRaw) : null;
 
         // 2. 发起网络请求（并行处理）
-        // 建议：后端接口直接返回 { version, data }
-        const res = await fetch("/api/gamedata");
-        const serverData = await res.json();
-
-        // 3. 版本比对
-        if (!localData || localData.version !== serverData.version) {
-            console.log("[数据同步] 更新缓存");
-            localStorage.setItem("gameData", JSON.stringify(serverData));
-            localData = serverData;
+        const res = await fetch("/api/gamedata", {
+            headers: { 'If-None-Match': `${gameVersion}` }
+        });
+        if (res.status === 304) {
+            console.log("gamedata 版本一致， 无需更新");
+        } else {
+            const serverData = await res.json();
+            // 3. 版本比对
+            if (!localData || localData.version !== serverData.version) {
+                console.log("[数据同步] 更新缓存");
+                localStorage.setItem("gameData", JSON.stringify(serverData));
+                localStorage.setItem("gameVersion", serverData.version);
+                localData = serverData;
+            }
         }
 
         // 4. 挂载到 window

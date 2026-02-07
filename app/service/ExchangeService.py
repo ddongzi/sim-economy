@@ -2,6 +2,8 @@ import random
 from abc import ABC
 from typing import Dict
 import json
+
+from app.core.config import APP_CONFIG, GOVERNMENT_PLAYER_ID
 from app.db.db import engine
 from app.db.session import SessionDep
 from app.crud import crud_market, crud_inventory, crud_player, crud_resources
@@ -10,14 +12,14 @@ from app.models import MarketOrder, TransactionActionType, MarketOrderPublic, Pl
     ExchangeTradeHistory, ResourceSnapshot
 from typing import Dict
 from abc import ABC, abstractmethod
-from sqlmodel import Session, select,func
+from sqlmodel import Session, select, func
 from app.service import AccountingService
 from app.service import InventoryService
 from app.service.ws import WSServiceBase
 from app.service.ws import manager
 import logging
-from datetime import datetime,timedelta
-from app.models import  MarketSnapshot
+from datetime import datetime, timedelta
+from app.models import MarketSnapshot
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -61,11 +63,21 @@ def execute_settlement(session: SessionDep, order_a: MarketOrder, order_b: Marke
 
     strike_price = order_b.price_per_unit
     total_cash = qty * strike_price
+    tax = total_cash * get_current_tax_rate(session)
+    total_cash -= tax
+
+    total_cash = round(total_cash, 3)
+    tax = round(tax, 3)
+
     # 给买家增加货物
     InventoryService.change_resource(session, buy_order.player_id, buy_order.resource_id, qty)
-    # 给卖家增加金钱
+    # 给卖家增加金钱， 包含扣除税
     AccountingService.change_cash(session, sell_order.player_id, total_cash,
                                   TransactionActionType.MARKET_SELL,
+                                  sell_order.id)
+    # 政府收取了交易税费
+    AccountingService.change_cash(session, GOVERNMENT_PLAYER_ID, tax,
+                                  TransactionActionType.MARKET_TAX_REVENUE,
                                   sell_order.id)
 
     # 买家挂单价大于成交价，退回差价
@@ -74,6 +86,9 @@ def execute_settlement(session: SessionDep, order_a: MarketOrder, order_b: Marke
         AccountingService.change_cash(session, buy_order.player_id, refund,
                                       TransactionActionType.MARKET_REFUND,
                                       buy_order.id)
+
+
+    logger.info(f"order total:{total_cash} tax:{tax}")
 
     crud_market.create_trade_record(session, sell_order.player_id,
                                     buy_order.player_id,
@@ -155,6 +170,7 @@ def calculate_cpi(session: SessionDep):
     # 最终 CPI = 加权变动总和 / 总权重
     return round(weighted_sum / total_weight, 3) * 100
 
+
 def get_player_assets_list(session: Session):
     # 1. 子查询：计算每个玩家的库存总价值
     # 注意：这里建议用 Inventory.resource_id 关联 Resource
@@ -182,19 +198,24 @@ def get_player_assets_list(session: Session):
     results = session.exec(statement).all()
     return [float(wealth) for wealth in results]
 
-def calculate_m0(session:SessionDep):
+
+def calculate_m0(session: SessionDep):
     m0_cash = crud_player.total_cash(session)  # 你已有的：所有玩家口袋里的钱
     return round(m0_cash, 3)
 
-def calculate_m1(session:SessionDep):
+
+def calculate_m1(session: SessionDep):
     """ 计算m1 """
     m0_cash = crud_player.total_cash(session)  # 你已有的：所有玩家口袋里的钱
     locked_cash = crud_market.total_locked_buy_cash(session)  # 正在买单中锁定的钱
-    return round(m0_cash + locked_cash,3)
-def calculate_total_assets(session:SessionDep):
+    return round(m0_cash + locked_cash, 3)
+
+
+def calculate_total_assets(session: SessionDep):
     """ 社会总资产： m1 + 仓库价格 """
     total_inventory_value = crud_inventory.get_all_assets_value(session)
     return round(calculate_m1(session) + total_inventory_value, 3)
+
 
 def calculate_gini(session: SessionDep):
     """ 计算财富gini指数
@@ -230,6 +251,8 @@ def calculate_gini(session: SessionDep):
     gini = (2 * np.sum(indices * sorted_assets) - (n + 1) * np.sum(sorted_assets)) / (n * np.sum(sorted_assets))
 
     return round(gini, 3)
+
+
 def get_cpi_trend(session: Session, current_cpi: float):
     # 查找 24 小时前最接近的一条记录
     one_day_ago = datetime.now() - timedelta(days=1)
@@ -244,6 +267,8 @@ def get_cpi_trend(session: Session, current_cpi: float):
 
     change_rate = (current_cpi - past_snapshot.cpi) / past_snapshot.cpi
     return change_rate
+
+
 def get_24h_trade_stats(session: Session):
     """
     宏观数据核心：计算过去 24 小时全服交易额，交易订单数, 交易量
@@ -261,6 +286,8 @@ def get_24h_trade_stats(session: Session):
         "volume": result[2] or 0,
         "count": result[1] or 0
     }
+
+
 def calculate_sector_24h_trade_stats(session: SessionDep):
     # 1. 定义时间窗口（过去24小时）
     one_day_ago = datetime.now() - timedelta(days=1)
@@ -293,6 +320,7 @@ def calculate_sector_24h_trade_stats(session: SessionDep):
     # 如果没有任何交易，返回空列表防止前端图表报错
     return sector_data
 
+
 def create_market_snapshot():
     """ 创建市场宏观快照 """
     # 1. 调用你之前写的计算逻辑获取各项指标
@@ -311,7 +339,7 @@ def create_market_snapshot():
             total_assets=total_assets,
             gini_index=gini,
             volume=daily_stat['volume'],
-            turnover = daily_stat['turnover'],
+            turnover=daily_stat['turnover'],
             order_count=daily_stat['count']
         )
 
@@ -335,9 +363,9 @@ def calculate_liquidity_score(session: SessionDep, res_id: int):
 
     # 2. 获取买卖价差 (反映市场共识)
     min_ask = session.exec(select(func.min(MarketOrder.price_per_unit))
-                           .where(MarketOrder.resource_id == res_id, MarketOrder.order_type== "sell")).first()
+                           .where(MarketOrder.resource_id == res_id, MarketOrder.order_type == "sell")).first()
     max_bid = session.exec(select(func.max(MarketOrder.price_per_unit))
-                           .where(MarketOrder.resource_id == res_id, MarketOrder.order_type== "buy")).first()
+                           .where(MarketOrder.resource_id == res_id, MarketOrder.order_type == "buy")).first()
 
     spread_ratio = 1.0
     if min_ask and max_bid and min_ask > 0:
@@ -382,7 +410,7 @@ def get_resource_row(session: SessionDep, res_id: int):
              .first() or 0)
     bid_v = (session.exec(
         select(func.sum(MarketOrder.total_quantity - MarketOrder.filled_quantity))
-            .where(MarketOrder.resource_id == res_id, MarketOrder.order_type == "buy"))
+        .where(MarketOrder.resource_id == res_id, MarketOrder.order_type == "buy"))
              .first() or 0
              )
 
@@ -401,7 +429,7 @@ def get_resource_row(session: SessionDep, res_id: int):
 
 def get_all_resource_market_snapshot(session: SessionDep):
     """ 所有资源的市场状态 """
-    resources  = crud_resources.get_resources_all(session)
+    resources = crud_resources.get_resources_all(session)
     result = []
     for res in resources:
         result.append(get_resource_row(session, res.id))
@@ -431,6 +459,7 @@ def economy_heartbeat_task():
 
         logger.info("全服宏观与资源微观快照同步保存完成")
 
+
 def get_market_history(session: Session):
     """
     获取市场历史快照
@@ -452,6 +481,14 @@ def get_market_history(session: Session):
         "cpi_values": [round(s.cpi, 2) for s in snapshots],
         "volume_values": [round(s.volume, 0) for s in snapshots]
     }
+
+
+def get_current_tax_rate(session: SessionDep):
+    """ 计算当前税率 """
+    base_rate = float(APP_CONFIG['market_tax_rate'])
+    solar_index = 1.2
+    rate = base_rate * (1 + (solar_index - 1.5) / 1.5)
+    return rate
 
 
 class ExchangeWS(WSServiceBase):

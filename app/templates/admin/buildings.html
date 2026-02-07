@@ -191,8 +191,8 @@
     async function loadMetas() {
         const tbody = document.getElementById('metaList');
         try {
-            const response = await fetch('/api/admin/buildings/metas');
-            const metas = await response.json();
+            const data = await window.gameDataPromise
+            const metas = data['buildings']
             tbody.innerHTML = '';
             metas.forEach(bp => {
                 // 这里假设后端在 bp 对象中统计了 levels 数量

@@ -14,7 +14,6 @@ logger = logging.getLogger("ProducerBot")
 # -
 # ---------------------------------------------------------
 class ProducerBot(BaseBot):
-    safety_hours = 1  # 避免集中式买 销售
 
     def __init__(self, resource_id, building_meta_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,6 +24,7 @@ class ProducerBot(BaseBot):
         self.recipe = {}  # 配方表
         self.buildings = []  #
         self.reserve_cash = 300 # 钱包阈值
+        self.safety_hours = 1
 
     def __str__(self):
         return f"{self.player['name']}"
@@ -65,6 +65,10 @@ class ProducerBot(BaseBot):
         else:
             self.recipe = None
             raise Exception("配方找不到错误")
+
+        self.safety_hours = math.ceil(1 / self.recipe['per_hour'])
+        if self.safety_hours < 1:
+            self.safety_hours = 1
 
         logger.info(f"{self.username} init .")
 
@@ -147,8 +151,6 @@ class ProducerBot(BaseBot):
                 max_affordable = int((available_cash * 0.7// market_price))
                 # 3. 取 需求量 和 财力 之间的最小值
                 buy_qty = int(min(needed_qty, max_affordable))
-
-                buy_qty = int(buy_qty * random.uniform(0.3, 0.6))
 
                 await self.buy_market_order(input_resource_id, buy_qty)
         logger.info(f"{self.username} try purchase done.")

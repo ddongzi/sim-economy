@@ -3,6 +3,9 @@
 
 alembic revision --autogenerate -m "init"
 alembic upgrade head
+
+python -m scripts.bots.bot_manager
+
 ---
 ## 游戏说明
 - 以业务模拟为主。**游戏的安全性**几乎没有考虑。
@@ -27,3 +30,6 @@ alembic upgrade head
 个人：
 
 系统：
+
+
+uvicorn app.main:app --reload

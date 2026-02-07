@@ -13,10 +13,11 @@ duration: int
 building_meta_id: str
 @router.post("/")
 async def create_resource(resource:ResourceCreate, session:SessionDep):
-    """ 创建资源 ， """
-    resource = crud_resources.create_resource(session, resource)
+    """ 创建资源 """
+    result = crud_resources.create_resource(session, resource)
     session.commit()
-    return
+    session.refresh(result)
+    return result
 
 @router.post("/recipe/")
 async def create_recipe(recipe:RecipeCreate, session:SessionDep):
@@ -72,4 +73,10 @@ async def update_resource_and_recipe(model:UpdateResourceRecipeRequest,session:S
     return {"msg": "ok"}
 
 
+async def update_resources_from_csv(session:SessionDep):
+    """ 从csv更新
+    """
+
+
+    pass    
 

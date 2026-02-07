@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.routers.api.admin import players,resources,buildings,accounting
+from app.routers.admin.api import players,resources,buildings,accounting
 
 router = APIRouter()
 router.include_router(players.router, prefix="/players", tags=["admin"])

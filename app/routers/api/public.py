@@ -74,3 +74,4 @@ def economic(session: SessionDep):
         "resources": get_all_resource_market_snapshot(session),
         "government": government
     }
+

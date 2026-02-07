@@ -19,8 +19,8 @@ from app.service import ChatService,ExchangeService, PlayerService
 from app.service.ws import manager
 from contextlib import asynccontextmanager
 import logging
-
-
+from app.db.db import engine
+from app.models import Industry, Player, Resource,Recipe,RecipeRequirement,Inventory,PlayerBuilding,GameConfig
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
@@ -65,9 +65,12 @@ async def redirect_to_login_handler(request: Request, exc: RedirectToLoginExcept
         content={"detail": "Session expired, please login again."}
     )
 
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(router)
 
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse("app/static/favicon.ico")
+
+

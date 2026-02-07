@@ -1,22 +1,24 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, BackgroundTasks,HTTPException
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException,Request
 from sqlmodel import select
+
+from app.core.cache import get_external_solar_data
 from app.core.config import GAME_DATA_VERSION, GOVERNMENT_PLAYER_ID
 from app.core.error import GameError
-from app.crud import crud_building, crud_recipe, crud_player, crud_resources, crud_building_task,crud_industry
+from app.crud import crud_building, crud_recipe, crud_player, crud_resources, crud_building_task, crud_industry
 from app.dependencies import get_current_user
 from app.models import BuildingMetaPublic, ResourcePublic, Recipe, RecipePublic, Industry, BuildingMetaDetail, \
     PlayerPublic, GovernmentOrder, TransactionActionType, GovernmentOrderDelivery
-from app.routers.api import buildings, admin, recipe,player,task,inventory,exchange,public,contract
+from app.routers.api import buildings, recipe, player, task, inventory, exchange, public, contract
 from app.db.session import SessionDep
-from app.service import AccountingService,PlayerService,InventoryService
+from app.service import AccountingService, PlayerService, InventoryService
 import logging
+
 logger = logging.getLogger(__name__)
 api_router = APIRouter(
 )
 api_router.include_router(buildings.router, prefix="/buildings", tags=["building"])
-api_router.include_router(admin.router, prefix="/admin", tags=["api"])
 api_router.include_router(recipe.router, prefix="/recipe", tags=["recipe"])
 api_router.include_router(task.router, prefix="/task", tags=["task"],
                           )
@@ -28,28 +30,58 @@ api_router.include_router(public.router, prefix="/public", tags=["public"])
 api_router.include_router(contract.router, prefix="/contract", tags=["contract"])
 
 
-#  localstorage game data
+
+@api_router.get("/news", tags=["api"])
+async def news():
+    # 1. 模拟从数据库或缓存中获取最近的几条手动通告
+    db_notices = [
+        {"type": "GOV", "content": "全乡春季补贴已发放...", "time": "2026-02-03T10:00:00Z"}
+    ]
+
+    # 2. 实时生成一条宇宙气象通告（不需要存数据库，直接算）
+    # 假设你有个全局变量存储当前的太阳指数
+    current_solar = await get_external_solar_data()
+    weather_notice = {
+        "type": "SPACE",
+        "content": f"今日太阳活动指数为{current_solar}，电波略有干扰，请注意贸易安全。 ",
+        "time": "2026-02-03T11:45:00Z"
+    }
+
+    # 3. 合并并只返回最近的 5 条
+    all_notices = [weather_notice] + db_notices
+    return all_notices[:5]  # 永远只给前端最新、最相关的
+
 
 @api_router.get("/version", tags=["api"])
 def version():
     return {"version": GAME_DATA_VERSION}
+
+
 @api_router.get("/gamedata", tags=["gamedata"])
-async def gamedata(session: SessionDep):
+async def gamedata(session: SessionDep, request:Request):
+    """ 检查版本,返回304无需修改.
+    """
+    logger.info(f'request {request.headers.get('If-None-Match')}, server: {GAME_DATA_VERSION}')
+    if request.headers.get('If-None-Match') == GAME_DATA_VERSION:
+        raise HTTPException(status_code=304)
+    
     buildings = crud_building.get_all_building_metas(session)
     resources = crud_resources.get_resources_all(session)
     recipes = crud_recipe.get_recipes_all(session)
     industries = crud_industry.get_industries(session)
+
     return {
         "version": GAME_DATA_VERSION,
-        "buildings": [ BuildingMetaDetail.model_validate(building) for building in buildings],
-        "resources": [ ResourcePublic.model_validate(resource) for resource in resources],
+        "buildings": [BuildingMetaDetail.model_validate(building) for building in buildings],
+        "resources": [ResourcePublic.model_validate(resource) for resource in resources],
         "recipes": [RecipePublic.model_validate(recipe) for recipe in recipes],
         "industries": industries
     }
 
+
 @api_router.post("/government/delivery")
 async def govern_purchase(session: SessionDep,
-                        data: GovernmentOrderDelivery,
+                          data: GovernmentOrderDelivery,
                           current_user: PlayerPublic = Depends(get_current_user)):
     """ 政府采购 """
     try:
