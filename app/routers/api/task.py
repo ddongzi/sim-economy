@@ -12,6 +12,7 @@ from app.service import AccountingService
 from app.service import InventoryService
 from app.service import PlayerService
 import logging
+import time
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -23,7 +24,7 @@ async def product(session: SessionDep, building_task: BuildingTaskCreate,
     """开始生产"""
     task = crud_building_task.get_building_task_by_player_building_id(session, building_task.player_building_id)
     if task:
-        if task.end_time <= datetime.now():
+        if task.end_time <= time.time():
             # 任务过期了，但还没领取
             raise HTTPException(status_code=400, detail=GameRespCode.TASK_NOT_CLAIM.detail)
         else:
@@ -34,11 +35,12 @@ async def product(session: SessionDep, building_task: BuildingTaskCreate,
     recipe = crud_recipe.get_recipe_by_output_resource_id(session, building_task.resource_id)
     if not recipe:
         raise HTTPException(status_code=400, detail="异常：找不到配方信息")
-    hours = building_task.quantity / recipe.per_hour
+    seconds = int(building_task.quantity / recipe.per_hour * 3600)
+    building_task.start_time = int(time.time())
 
     try:
         # 创建任务
-        task = crud_building_task.create_building_task(session, building_task, player_id=player_in.id, duration=hours)
+        task = crud_building_task.create_building_task(session, building_task, player_id=player_in.id, duration=seconds)
         session.flush()
         # 扣除成本
         AccountingService.change_cash(session, player_in.id, -building_task.cash_cost,
@@ -79,7 +81,8 @@ async def claim_task(session: SessionDep, player_building_id: int,
     task = crud_building_task.get_building_task_by_player_building_id(session, player_building_id)
     if not task:
         raise HTTPException(status_code=400, detail=GameRespCode.BUILDING_IDLE.detail)
-    if task.end_time > datetime.now():
+    if task.end_time > time.time():
+        logger.info('task busy cant claim')
         raise HTTPException(status_code=400, detail=GameRespCode.BUILDING_BUSY.detail)
     else:
         # 任务已经完成，但还没有领取

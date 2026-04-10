@@ -2,11 +2,11 @@ class GameWS {
     constructor(url) {
         this.url = url;
         this.socket = null;
-        this.handlers = new Map(); // 存储不同业务的处理器
+        this.handlers = new Map();
+        this.sendQueue = []; // --- 新增：待发送消息队列 ---
         this.setup();
     }
 
-    // --- 统一的发送方法 ---
     send(type, sub_type, payload = {}) {
         const message = JSON.stringify({
             type: type,
@@ -14,36 +14,57 @@ class GameWS {
             data: payload,
             timestamp: Date.now()
         });
-        console.log("GameWSocket.send: ", message)
-        this.socket.send(message);
+
+        // --- 修改：判断状态 ---
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            console.log("GameWSocket.send: ", message);
+            this.socket.send(message);
+        } else {
+            console.log("WS未连接，消息进入队列等待: ", type);
+            this.sendQueue.push(message); // 暂时存起来
+        }
     }
 
-    // --- 统一的业务注册方法 ---
-    // 允许不同的业务模块“挂载”到这个连接上 。 收到信息时候回调callback
     subscribe(type, callback) {
         this.handlers.set(type, callback);
-        console.log("subscribe. ", type, callback)
     }
 
-    // --- 统一的底层监听 ---
     setup() {
-        console.log(this.url)
+        console.log("正在连接 WS:", this.url);
         this.socket = new WebSocket(this.url);
+
+        // --- 新增：监听连接成功 ---
+        this.socket.onopen = () => {
+            console.log("WS 连接已建立");
+            // 连接成功后，清空队列中的消息
+            while (this.sendQueue.length > 0) {
+                const msg = this.sendQueue.shift();
+                console.log("发送缓冲消息:", msg);
+                this.socket.send(msg);
+            }
+        };
 
         this.socket.onmessage = (e) => {
             const msg = JSON.parse(e.data);
-            // 统一路由：根据 type 找到对应的业务回调
             const handler = this.handlers.get(msg.type);
-            console.log("onmessage: ", msg, handler)
             if (handler) handler(msg);
         };
 
-        this.socket.onclose = () => {
-            console.log("连接断开，触发统一重连...");
+        this.socket.onclose = (e) => {
+            console.log("连接断开:", e.code, "5秒后重连...");
+            // 清理旧 socket 避免内存泄漏
+            this.socket.onopen = null;
+            this.socket.onmessage = null;
+            this.socket.onclose = null;
             setTimeout(() => this.setup(), 5000);
+        };
+
+        this.socket.onerror = (err) => {
+            console.error("WS 发生错误:", err);
         };
     }
 }
+
 
 function parseJwt(token) {
     try {

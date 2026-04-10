@@ -29,8 +29,6 @@ api_router.include_router(public.router, prefix="/public", tags=["public"])
 
 api_router.include_router(contract.router, prefix="/contract", tags=["contract"])
 
-
-
 @api_router.get("/news", tags=["api"])
 async def news():
     # 1. 模拟从数据库或缓存中获取最近的几条手动通告

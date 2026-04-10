@@ -1,0 +1,1 @@
+python -m scripts.bots.bot_manager

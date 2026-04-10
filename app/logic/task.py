@@ -22,5 +22,5 @@ def calculate_task_cost(session: SessionDep, task:BuildingTaskBase) :
 
     total_cost += building_meta.maintenance_cost * hours
 
-    task.cash_cost = round(total_cost, 3)
+    task.cash_cost = round(total_cost, 2)
     return task

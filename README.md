@@ -1,9 +1,4 @@
 
-只能执行一次alembic init migrations
-
-alembic revision --autogenerate -m "init"
-alembic upgrade head
-
 python -m scripts.bots.bot_manager
 
 ---

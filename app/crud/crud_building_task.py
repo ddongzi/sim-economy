@@ -17,13 +17,13 @@ def get_multi_by_player(session: Session, player_id: int, skip: int = 0, limit: 
     return session.exec(statement).all()
 
 def create_building_task(session: Session, building_task_in: BuildingTaskCreate, player_id: int
-                         ,duration:float) -> BuildingTask:
+                         ,duration:int) -> BuildingTask:
     # 将 Schema 转换为 数据库模型实例
     db_obj = BuildingTask(
         **building_task_in.model_dump(),
         player_id=player_id
     )
-    db_obj.end_time = db_obj.start_time + timedelta(hours=duration)
+    db_obj.end_time = db_obj.start_time + duration
 
     session.add(db_obj)
     return db_obj

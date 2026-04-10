@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 import random
 from anyio import wait_writable
 
-from app.routers.api.task import product
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -52,25 +50,7 @@ class BaseBot:
         await self.sync_player()
 
 
-# ---------------------------------------------------------
-# 2. 做市商 Bot (高频)
-# ---------------------------------------------------------
-class MarketMakerBot(BaseBot):
-    async def run(self):
-        await self.login()
-        while True:
-            # 获取当前盘口
-            market = await self.client.get("/api/public/economy")
-            curr_p = market.json()["resources"][0]["current_price"]
 
-            # 双向挂单：在均价上下 5% 挂单
-            await self.client.post("/api/market/orders", headers=self.headers, json={
-                "resource_id": 1, "order_type": "buy", "price": curr_p * 0.95, "quantity": 100
-            })
-            await self.client.post("/api/market/orders", headers=self.headers, json={
-                "resource_id": 1, "order_type": "sell", "price": curr_p * 1.05, "quantity": 100
-            })
-            await asyncio.sleep(10)  # 每10秒更新一次挂单
 
 
 class ArbitrageurBot(BaseBot):
@@ -111,7 +91,6 @@ class ArbitrageurBot(BaseBot):
                 "price_per_unit": round(best_bid['price_per_unit'] + 0.1, 2),
                 "created_at": datetime.now().isoformat(),
                 "order_type": "buy",
-                "quality": 0
             })
             logger.info(f"尝试以 {round(best_bid['price_per_unit'] + 0.1, 2)} 价格挂买单...")
             # 2. 高价卖出
@@ -121,7 +100,6 @@ class ArbitrageurBot(BaseBot):
                 "price_per_unit": round(best_ask['price_per_unit'] - 0.1, 2),
                 "created_at": datetime.now().isoformat(),
                 "order_type": "sell",
-                "quality": 0
             })
             logger.info(f"尝试以 {round(best_ask['price_per_unit'] - 0.1, 2)} 价格挂卖单...")
         else:

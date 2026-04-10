@@ -4,16 +4,14 @@ from app.db.session import SessionDep
 from app.models import Player,PlayerCreate
 from app.core.config import INITIAL_CASH
 
-
 # --- 增加 (Create) ---
 def create_player(session: SessionDep, player_in: PlayerCreate) -> Player:
-    # 这里的 **player_in.model_dump() 可以自动映射字段，更简洁
-    # 自动校验转换
     db_obj = Player.model_validate(player_in)
-    # 如果 Player 模型有 password 字段且需要加密，应在此处处理
     session.add(db_obj)
     session.flush()
+    session.refresh(db_obj)
     return db_obj
+
 
 
 # --- 查询 (Read) ---

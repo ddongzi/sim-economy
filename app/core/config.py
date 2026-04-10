@@ -17,7 +17,7 @@ GAME_DATA_VERSION = os.getenv("GAME_DATA_VERSION", "19970101")
 # 注意：环境变量读取出来都是字符串，如果是数字需要转换
 INITIAL_CASH = int(os.getenv("INITIAL_CASH", 5000))
 
-GOVERNMENT_PLAYER_ID = 0
+GOVERNMENT_PLAYER_ID = 1
 
 APP_CONFIG = {}
 

@@ -53,8 +53,9 @@ class WSConnectionManager:
              # 这一行日志能帮你发现 ID 类型错误或玩家不在线
             logger.warning(f"❌ 发送失败: 玩家 {receiver_name} 不在线或 ID 类型({type(receiver_name)})错误, {self.active_connections.keys()}")
     async def broadcast(self, message: dict):
-        # 广播：给所有人发
-        for connection in self.active_connections.values():
+        # 广播：给所有人发，
+        # 防止遍历时候，其他异步修改，用list创建快照
+        for connection in list(self.active_connections.values()):
             await connection.send_json(message)
 
     def register(self, msg_type, instance):

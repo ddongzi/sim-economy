@@ -15,8 +15,8 @@ def change_cash(
     player = session.exec(statement).one_or_none()
 
     if not player:
-        raise ValueError("player 异常")
-    amount = round(amount, 3)
+        raise ValueError(f"player 异常 {player_id}")
+    amount = round(amount, 2)
 
     before = player.cash
     after = player.cash + amount
@@ -72,8 +72,8 @@ def get_all_ledger(session:SessionDep, player_id:int,
             type = log.action_type,
             type_display = TransactionActionType(log.action_type).name,
             description="流水描述",
-            change=round(log.change_amount, 3),
-            balance_after=round(log.after_balance, 3),
+            change=round(log.change_amount, 2),
+            balance_after=round(log.after_balance, 2),
         )
         result.append(ledger)
     return {

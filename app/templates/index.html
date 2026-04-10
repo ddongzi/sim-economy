@@ -6,6 +6,7 @@
     <title>SimEcon</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
 </head>
 <body class=" d-flex align-items-center justify-content-center">
 <div class="container-fluid bg-secondary-subtle bg-gradient vh-100 d-flex align-items-center justify-content-center bg-light">
@@ -192,7 +193,6 @@
      */
     async function checkAuthOnLoad() {
         try {
-            // 使用 [Fetch API](https://developer.mozilla.org) 检查状态
             const response = await fetch("/api/player/me", {credentials: 'include'});
             if (response.ok) {
                 window.location.href = '/landscape';

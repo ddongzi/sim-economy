@@ -44,7 +44,6 @@
                         <tr>
                             <th>资源</th>
                             <th>发件方</th>
-                            <th>品质</th>
                             <th>数量</th>
                             <th>单价</th>
                             <th>总额</th>
@@ -63,7 +62,6 @@
                         <tr>
                             <th>资源</th>
                             <th>接收方</th>
-                            <th>品质</th>
                             <th>数量</th>
                             <th>单价</th>
                             <th>总额</th>
@@ -82,7 +80,6 @@
                         <tr>
                             <th>资源</th>
                             <th>对方公司</th>
-                            <th>品质</th>
                             <th>每日供应量</th>
                             <th>协议单价</th>
                             <th>状态</th>
@@ -112,7 +109,6 @@
                                placeholder="输入公司唯一数字 ID..." required>
                     </div>
 
-                    <!-- 资源与品质 -->
                     <div class="row g-2 mb-3">
                         <div class="col-8">
                             <label class="form-label small fw-bold">资源名称</label>
@@ -390,10 +386,7 @@
                 <td>${this.getItemTemplate(c)}</td>
                 <td>
                     <span class="fw-bold text-dark">${mode === 'received' ? '来自 ID: ' + c.sender_id : '发送至 ID: ' + c.receiver_id}</span>
-                    <div class="text-muted small">品质: Q${c.quality || 0}</div>
                 </td>
-                <td><span class="badge bg-light text-dark border">Q${c.quality}</span></td>
-                <td>${Number(c.quantity).toLocaleString()}</td>
                 <td class="text-success">$${Number(c.price_per_unit).toFixed(3)}</td>
                 <td class="fw-bold">$${Number(c.total_amount).toLocaleString()}</td>
                 <td class="text-end">${this.getActionButtons(c, mode)}</td>

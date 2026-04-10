@@ -11,6 +11,8 @@ from app.dependencies import create_access_token, get_current_user
 from app.models import PlayerCreate, PlayerPublic, PlayerLogin, TransactionActionType
 from app.service import AccountingService,PlayerService
 import base64
+import logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -25,14 +27,21 @@ async def register_player(player_in: PlayerCreate, session: SessionDep):
     if db_player:
         raise HTTPException(status_code=400, detail="该用户名已被注册")
 
-    new_player = crud_player.create_player(session, player_in=player_in)
-    AccountingService.change_cash(session, new_player.id, INITIAL_CASH,
-                                  TransactionActionType.NEW_PLAYER_INITIAL_REVENUE,
-                                  new_player.id)
-    AccountingService.change_cash(session, GOVERNMENT_PLAYER_ID, -INITIAL_CASH,
-                                  TransactionActionType.SYSTEM_NEW_PLAYER_COST,
-                                  new_player.id)
-    session.commit()
+    try:
+        new_player = crud_player.create_player(session, player_in=player_in)
+        
+        AccountingService.change_cash(session, new_player.id, INITIAL_CASH,
+                                    TransactionActionType.NEW_PLAYER_INITIAL_REVENUE,
+                                    new_player.id)
+        AccountingService.change_cash(session, GOVERNMENT_PLAYER_ID, -INITIAL_CASH,
+                                    TransactionActionType.SYSTEM_NEW_PLAYER_COST,
+                                    new_player.id)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(new_player)
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail="database error!!")
     return new_player
 
 

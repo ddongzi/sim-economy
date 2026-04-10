@@ -12,8 +12,8 @@ from app.models import MarketOrder, TransactionActionType, MarketOrderPublic, Pl
     ExchangeTradeHistory, ResourceSnapshot
 from typing import Dict
 from abc import ABC, abstractmethod
-from sqlmodel import Session, select, func
-from app.service import AccountingService
+from sqlmodel import Session, select, func,cast, Numeric, desc, over
+from app.service import AccountingService,ExchangeService
 from app.service import InventoryService
 from app.service.ws import WSServiceBase
 from app.service.ws import manager
@@ -56,8 +56,9 @@ def calculate_price_per_unit(
     return MarketAvgFollowerStrategy().calculate_price(session, resource_id, context or {})
 
 
-def execute_settlement(session: SessionDep, order_a: MarketOrder, order_b: MarketOrder, qty: int):
+async def execute_settlement(session: SessionDep, order_a: MarketOrder, order_b: MarketOrder, qty: int):
     """ 处理订单结算：货物金钱转移 """
+
     sell_order = order_a if order_a.order_type == "sell" else order_b
     buy_order = order_b if order_b.order_type == "buy" else order_a
 
@@ -66,8 +67,8 @@ def execute_settlement(session: SessionDep, order_a: MarketOrder, order_b: Marke
     tax = total_cash * get_current_tax_rate(session)
     total_cash -= tax
 
-    total_cash = round(total_cash, 3)
-    tax = round(tax, 3)
+    total_cash = round(total_cash, 2)
+    tax = round(tax, 2)
 
     # 给买家增加货物
     InventoryService.change_resource(session, buy_order.player_id, buy_order.resource_id, qty)
@@ -96,7 +97,25 @@ def execute_settlement(session: SessionDep, order_a: MarketOrder, order_b: Marke
                                     quantity=qty,
                                     price=strike_price
                                     )
-
+    await ExchangeService.exchangeWs.broadcast_to_resource(order_a.resource_id, {
+        "type": "exchange",
+        "sub_type":"trade_update",
+        "data": {
+            'resource_id': order_a.resource_id,
+            'new_trade': {
+                "time": int(datetime.now().timestamp()),
+                "price": strike_price,
+                'quantity': qty
+            },
+            'price_info':{
+                "last_price": strike_price,
+                "high_24h": 0.0,
+                "low_24h": 0.0,
+                "change_24h": "+0.0%"
+            }
+         
+        }
+    })
 
 def refund_marker_order(session, order: MarketOrder):
     """ 某种原因：比如撮合冲突。 需要回退资源和金钱 """
@@ -110,8 +129,29 @@ def refund_marker_order(session, order: MarketOrder):
         InventoryService.change_resource(session, order.player_id, order.resource_id, remaining_qty)
     print("refund market order !")
 
+def get_order_book(session, resource_id):
+    """ 获取active订单本
 
-def match_order(session: SessionDep, new_order: MarketOrder):
+    """
+    new_orders = crud_market.get_active_orders_by_resource(session, resource_id)
+    ret_orders = {
+        'asks': [],
+        'bids': []
+    }
+    for o in new_orders['asks']:
+        op = o.model_dump()
+        op['quantity'] = o.total_quantity - o.filled_quantity
+        op = MarketOrderPublic.model_validate(op)
+        ret_orders['asks'].append(op.model_dump(mode="json"))
+    for o in new_orders['bids']:
+        op = o.model_dump()
+        op['quantity'] = o.total_quantity - o.filled_quantity
+        op = MarketOrderPublic.model_validate(op)
+        op.quantity = o.total_quantity - o.filled_quantity
+        ret_orders['bids'].append(op.model_dump(mode="json"))
+    return ret_orders
+
+async def match_order(session: SessionDep, new_order: MarketOrder):
     """ 在每次创建订单后执行 """
     potential_matches = []
     if new_order.order_type == "buy":
@@ -132,12 +172,20 @@ def match_order(session: SessionDep, new_order: MarketOrder):
         trade_qty = min(my_remaining, match_remaining)
 
         if trade_qty <= 0: continue
-
-        execute_settlement(session, new_order, match, trade_qty)
+        await execute_settlement(session, new_order, match, trade_qty)
         # 4. 更新订单状态
         crud_market.update_order_filled_quantity(session, new_order.id, trade_qty)
         crud_market.update_order_filled_quantity(session, match.id, trade_qty)
-
+        session.commit()
+        # 更新订单本
+        await ExchangeService.exchangeWs.broadcast_to_resource(new_order.resource_id, {
+            "type": "exchange",
+            "sub_type":"order_book",
+            "data": {
+                "resource_id": new_order.resource_id,
+                "orders": ExchangeService.get_order_book(session, new_order.resource_id)
+            }
+        })
 
 def calculate_cpi(session: SessionDep):
     """
@@ -168,7 +216,7 @@ def calculate_cpi(session: SessionDep):
         return 1.0  # 默认基准值
 
     # 最终 CPI = 加权变动总和 / 总权重
-    return round(weighted_sum / total_weight, 3) * 100
+    return round(weighted_sum / total_weight, 2) * 100
 
 
 def get_player_assets_list(session: Session):
@@ -201,20 +249,20 @@ def get_player_assets_list(session: Session):
 
 def calculate_m0(session: SessionDep):
     m0_cash = crud_player.total_cash(session)  # 你已有的：所有玩家口袋里的钱
-    return round(m0_cash, 3)
+    return round(m0_cash, 2)
 
 
 def calculate_m1(session: SessionDep):
     """ 计算m1 """
     m0_cash = crud_player.total_cash(session)  # 你已有的：所有玩家口袋里的钱
     locked_cash = crud_market.total_locked_buy_cash(session)  # 正在买单中锁定的钱
-    return round(m0_cash + locked_cash, 3)
+    return round(m0_cash + locked_cash, 2)
 
 
 def calculate_total_assets(session: SessionDep):
     """ 社会总资产： m1 + 仓库价格 """
     total_inventory_value = crud_inventory.get_all_assets_value(session)
-    return round(calculate_m1(session) + total_inventory_value, 3)
+    return round(calculate_m1(session) + total_inventory_value, 2)
 
 
 def calculate_gini(session: SessionDep):
@@ -250,7 +298,7 @@ def calculate_gini(session: SessionDep):
     # 标准的累积和公式实现（更常见）
     gini = (2 * np.sum(indices * sorted_assets) - (n + 1) * np.sum(sorted_assets)) / (n * np.sum(sorted_assets))
 
-    return round(gini, 3)
+    return round(gini, 2)
 
 
 def get_cpi_trend(session: Session, current_cpi: float):
@@ -282,7 +330,7 @@ def get_24h_trade_stats(session: Session):
 
     result = session.exec(statement).first()
     return {
-        "turnover": round(result[0] or 0.0, 3),
+        "turnover": round(result[0] or 0.0, 2),
         "volume": result[2] or 0,
         "count": result[1] or 0
     }
@@ -312,7 +360,7 @@ def calculate_sector_24h_trade_stats(session: SessionDep):
     sector_data = [
         {
             "industry_id": row.industry_id,
-            "turnover": round(row.turnover, 3) if row.turnover else 0.0,
+            "turnover": round(row.turnover, 2) if row.turnover else 0.0,
             "volume": row.volume
         }
         for row in results
@@ -486,9 +534,59 @@ def get_market_history(session: Session):
 def get_current_tax_rate(session: SessionDep):
     """ 计算当前税率 """
     base_rate = float(APP_CONFIG['market_tax_rate'])
-    solar_index = 1.2
-    rate = base_rate * (1 + (solar_index - 1.5) / 1.5)
+    rate = base_rate
     return rate
+
+
+
+from sqlalchemy import func, select
+
+def get_resource_market_history(session: SessionDep, resource_id: int, interval_minutes: int = 60):
+    interval_seconds = interval_minutes * 60
+    
+    # 如果 created_at 本身就是整数秒，直接除以间隔即可
+    # 假设你的 created_at 是整数
+    time_bucket = (
+        func.floor(ExchangeTradeHistory.created_at / interval_seconds) 
+        * interval_seconds
+    ).label("time")
+
+    # 内部查询：计算每个桶的基础数据
+    inner_stmt = (
+        select(
+            time_bucket,
+            ExchangeTradeHistory.price_per_unit,
+            ExchangeTradeHistory.quantity,
+            # 使用窗口函数获取开盘和收盘
+            func.first_value(ExchangeTradeHistory.price_per_unit).over(
+                partition_by=time_bucket,
+                order_by=ExchangeTradeHistory.created_at.asc(),
+                rows=(None, None) 
+            ).label("open"),
+            func.last_value(ExchangeTradeHistory.price_per_unit).over(
+                partition_by=time_bucket,
+                order_by=ExchangeTradeHistory.created_at.asc(),
+                rows=(None, None)
+            ).label("close"),
+        )
+        .where(ExchangeTradeHistory.resource_id == resource_id)
+    ).subquery()
+
+    # 外部查询：执行 OHLCV 聚合
+    final_stmt = (
+        select(
+            inner_stmt.c.time,
+            func.max(inner_stmt.c.open).label("open"),
+            func.max(inner_stmt.c.price_per_unit).label("high"),
+            func.min(inner_stmt.c.price_per_unit).label("low"),
+            func.max(inner_stmt.c.close).label("close"),
+            func.sum(inner_stmt.c.quantity).label("volume")
+        )
+        .group_by(inner_stmt.c.time)
+        .order_by(inner_stmt.c.time)
+    )
+    
+    return session.exec(final_stmt).all()
 
 
 class ExchangeWS(WSServiceBase):

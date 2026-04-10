@@ -57,7 +57,6 @@
                 <tr>
                     <th class="ps-4">产出资源 / 配方名称</th>
                     <th>所属建筑</th>
-                    <th style="min-width: 250px;">所需材料 (数量/品质)</th>
                     <th>每小时产出</th>
                     <th class="text-end pe-4">操作</th>
                 </tr>
@@ -167,7 +166,6 @@
                                 <span class="me-1">😂</span>
                                 <span class="small fw-bold">${resDetail.name}</span>
                                 <span class="badge bg-primary ms-2">x${input.quantity}</span>
-                                ${input.quality_req > 1 ? `<span class="badge bg-warning text-dark ms-1">Q${input.quality_req}</span>` : ''}
                             </div>`;
                     }).join('');
                 } else {

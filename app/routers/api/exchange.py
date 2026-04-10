@@ -5,20 +5,23 @@ from app.db.session import SessionDep
 from app.dependencies import get_current_user
 
 from app.crud import crud_inventory, crud_market, crud_resources, crud_player
-from app.models import MarketOrder, MarketOrderCreate, PlayerPublic, MarketOrderPublic, TransactionActionType
+from app.models import MarketOrder, MarketOrderCreate, PlayerPublic, MarketOrderPublic, TransactionActionType,ResourceMarketHistoryResponse
 from app.core.error import GameError
 from app.service import AccountingService, ExchangeService, PlayerService, InventoryService
 import asyncio
 from app.service.ws import manager
-
+from datetime import datetime
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/order")
+@router.post("/order/create")
 async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
                               player_in: PlayerPublic = Depends(get_current_user)):
     """ 提交委托订单 """
+    order_in.created_at = int(datetime.now().timestamp())
+
+    # 创建委托
     try:
         resource = crud_resources.get_resource(session, order_in.resource_id)
         # 涨跌停设置
@@ -49,38 +52,17 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
             total_cost = order_in.quantity * order_in.price_per_unit
             AccountingService.change_cash(session, player_in.id, -total_cost,
                                           TransactionActionType.MARKET_BUY, order.id)
-        # 撮合订单
-        ExchangeService.match_order(session, order)
         session.commit()
-
-        player = crud_player.get_player_by_id(session, player_in.id)
-        await PlayerService.playerWs.send_update_cash(player.name, player.cash)
-
-        # 撮合完成后，调用广播
-        # 这个 broadcast 不在 websocket 循环里，而是在业务逻辑里
-        new_orders = crud_market.get_active_orders_by_resource(session, order.resource_id)
-        ret_orders = {
-            'asks': [],
-            'bids': []
-        }
-        for o in new_orders['asks']:
-            op = o.model_dump()
-            op['quantity'] = o.total_quantity - o.filled_quantity
-            op = MarketOrderPublic.model_validate(op)
-            ret_orders['asks'].append(op.model_dump(mode="json"))
-        for o in new_orders['bids']:
-            op = o.model_dump()
-            op['quantity'] = o.total_quantity - o.filled_quantity
-            op = MarketOrderPublic.model_validate(op)
-            op.quantity = o.total_quantity - o.filled_quantity
-            ret_orders['bids'].append(op.model_dump(mode="json"))
-        logger.info("Match ok. will ws broadcast")
-        await ExchangeService.exchangeWs.broadcast_to_resource(order.resource_id, {
+        if order_in.order_type == "buy":
+            player = crud_player.get_player_by_id(session, player_in.id)
+            await PlayerService.playerWs.send_update_cash(player.name, player.cash)
+        # 更新订单本
+        await ExchangeService.exchangeWs.broadcast_to_resource(order_in.resource_id, {
             "type": "exchange",
-            "sub_type":"update",
+            "sub_type":"order_book",
             "data": {
-                "resource_id": order.resource_id,
-                "orders": ret_orders
+                "resource_id": order_in.resource_id,
+                "orders": ExchangeService.get_order_book(session, order_in.resource_id)
             }
         })
 
@@ -90,6 +72,10 @@ async def create_market_order(session: SessionDep, order_in: MarketOrderCreate,
     except Exception as e:
         logger.exception(f"create market order failed. {e}")
         raise HTTPException(status_code=500, detail="内部错误")
+        
+    # 试图撮合
+    await ExchangeService.match_order(session, order)
+
     return {"msg": "订单创建成功"}
 
 
@@ -125,7 +111,26 @@ async def get_market_price(session: SessionDep, resource_id: int,
         market_price = resource.base_price
     return {
         "base_price": resource.base_price,
-        "market_price": round(market_price, 3),
+        "market_price": round(market_price, 2),
         "lowest_sell_order": lowest_sell_order,
         "highest_buy_order": highest_buy_order
     }
+
+@router.get("/history/{resource_id}", response_model=ResourceMarketHistoryResponse)
+def get_resource_market_history(
+    session: SessionDep,
+    resource_id:int,
+    interval_minutes: int = 60,
+    ):
+    results = ExchangeService.get_resource_market_history(session, resource_id, interval_minutes)
+    return {
+        "resource_id": resource_id,
+        "interval_minutes": interval_minutes,
+        "data": results  
+    }
+
+@router.post("/order/cancel")
+async def create_market_order(session: SessionDep, order_in: MarketOrderPublic,
+                              player_in: PlayerPublic = Depends(get_current_user)):
+    """ 撤销委托订单 """
+    pass

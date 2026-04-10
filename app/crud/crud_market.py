@@ -1,5 +1,5 @@
 from typing import List
-
+import time
 from datetime import timedelta
 from sqlmodel import Session, select, col,func
 from app.models import MarketOrder,ExchangeTradeHistory
@@ -84,7 +84,6 @@ def update_order_filled_quantity(
     db_order = session.get(MarketOrder, order_id)
     if not db_order:
         return None
-
     db_order.filled_quantity += increment_amount
 
     # 状态自动流转逻辑：观察者模式
@@ -145,7 +144,7 @@ def create_trade_record(session: Session,
         quantity=quantity,
         price_per_unit=price,
         total_amount=total_amount,
-        created_at=datetime.utcnow()
+        created_at=int(time.time())
     )
     session.add(db_trade)
     return db_trade

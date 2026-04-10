@@ -32,7 +32,8 @@
     .landscape-container {
         flex-grow: 1;
         position: relative;
-        height: calc(100vh - 60px); /* 视口高度减去顶部导航栏 */
+        height: calc(100vh - 60px);
+        /* 视口高度减去顶部导航栏 */
         overflow: hidden;
     }
 
@@ -102,8 +103,8 @@
 {% include 'components/buildingDetailModal.html' %}
 
 <script>
-<!-- 界面变量 -->
-let playerBuildingInstances = null;
+    <!-- 界面变量 -->
+    let playerBuildingInstances = null;
 
 </script>
 <script>
@@ -131,15 +132,18 @@ let playerBuildingInstances = null;
                     card.setAttribute('data-bs-target', '#buildingDetailModal');
                     card.setAttribute('data-id', building.id)
                     card.setAttribute('data-slot-num', i)
-                    const now = Date.now() ;
                     if (building.task) {
-                        const end_time = new Date(building.task.end_time).getTime();
-                        card.innerHTML += `
-                        <span class="plot-status-badge badge rounded-pill
-                            ${(now >= building.task.end_time ? 'bg-success' : 'bg-primary')}">
+                        // 确保 building.task 和 end_time 存在，否则给个默认值 0
+                        const taskEndTimeS = building.task?.end_time || 0;
+                        const end_time = taskEndTimeS * 1000;
+                        const isFinished = Date.now() >= end_time;
 
-                            ${(now >= end_time ? '可领取' : '生产中')}
-                        </span>`
+                        card.innerHTML += `
+                            <span class="plot-status-badge badge rounded-pill
+                                ${isFinished ? 'bg-success' : 'bg-primary'}">
+                                ${isFinished ? '可领取' : '生产中'}
+                            </span>`;
+
                     } else {
                         card.innerHTML += `<span class="plot-status-badge badge rounded-pill bg-warning text-dark
                             闲置
@@ -153,7 +157,7 @@ let playerBuildingInstances = null;
                     style="width:${calculateProgress(building.task.start_time, building.task.end_time)}%"></div>` : ''}
                     `;
                 } else {
-// 真正意义上的空地
+                    // 真正意义上的空地
                     card.className = 'plot-card plot-empty';
 
                     // 1. 确保 data-bs-toggle="modal" 拼写正确
@@ -172,7 +176,7 @@ let playerBuildingInstances = null;
             }
 
         } catch
-            (error) {
+        (error) {
             console.error("加载基地失败:", error);
             container.innerHTML = '<div class="alert alert-danger w-100 m-2">连接基地失败，请刷新重试</div>';
         }

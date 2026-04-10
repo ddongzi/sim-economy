@@ -1,10 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from app.models import Player
-
-load_dotenv()
-
+from app.models import *
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -19,8 +16,8 @@ from app.service import ChatService,ExchangeService, PlayerService
 from app.service.ws import manager
 from contextlib import asynccontextmanager
 import logging
-from app.db.db import engine
-from app.models import Industry, Player, Resource,Recipe,RecipeRequirement,Inventory,PlayerBuilding,GameConfig
+from app.db.db import engine, init_db
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
@@ -29,26 +26,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-load_config()
 
 # 1. 定义 Lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 1. 启动
 
-#   后台定时任务
+    init_db()
+    logger.info('db init.')
+
+    load_config()
+
+    # 后台定时任务
     scheduler = BackgroundScheduler()
-    # 开发环境
-    # trigger = CronTrigger(hour=0, minute=0, second=0)
-    # scheduler.add_job(economy_heartbeat_task, trigger=trigger)
     scheduler.add_job(ExchangeService.economy_heartbeat_task, "interval", seconds=60 * 60)
-
     scheduler.start()
     logger.info("scheduler start")
 
     yield  # 程序运行中...
 
     # --- 这里是关闭逻辑 ---
-    logging.info("Shutting down...")
+    scheduler.shutdown()
+    logging.info("APP Shutting down...")
 
 app = FastAPI(lifespan=lifespan)
 

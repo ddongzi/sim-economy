@@ -3,51 +3,56 @@ import httpx
 
 from scripts.bots.bot import BaseBot
 from scripts.bots.ProducerBot import ProducerBot
+from scripts.bots.MarketMakerBot import MarketMakerBot
 import logging
 
 logger = logging.getLogger(__name__)
 
 BOT_VERSION = "v0.0.3"
-
 async def main():
+    # 1. 建立临时客户端并加载共享数据
     async with httpx.AsyncClient(base_url="http://localhost:8000") as temp_client:
+        # 直接通过类名调用
         await BaseBot.load_shared_data(temp_client)
-    # 定义你要运行的机器人阵列
-    bot_army = [
+    bot_settings = [
+        {
+            "cls": ProducerBot, 
+            "count": 20, 
+            "name": "电", 
+            "params": {"resource_id": 2, "building_meta_id": "power_plant_"}
+        },
+        {
+            "cls": MarketMakerBot, 
+            "count": 4, 
+            "name": "商", 
+            "params": {"resource_id": 2}
+        },
+  
     ]
-    total_bots = 80
-    bot_config = [
-        {"res_id": 1, "meta": "water_", "name": "水", "w": 10},  # 基
-        {"res_id": 2, "meta": "power_plant_", "name": "电", "w": 10},  # 工业核心
-        {"res_id": 9, "meta": "mine_plant_", "name": "土", "w": 10},  # 基建与农业必备
 
-        {"res_id": 3, "meta": "farm_", "name": "小麦", "w": 30},
-        {"res_id": 14, "meta": "farm_", "name": "苹果", "w": 30},  #
-        {"res_id": 4, "meta": "flour_mill_", "name": "面粉", "w": 10},  #
+    bot_army = []
 
-        {"res_id": 13, "meta": "bakery_", "name": "馒头", "w": 10},
-        {"res_id": 5, "meta": "bakery_", "name": "面包", "w": 10},
+    # 2. 简单的嵌套循环生成实例
+    for setting in bot_settings:
+        BotClass = setting["cls"]
+        for i in range(setting["count"]):
+            # 自动生成唯一 username，例如 P_电_0, M_商_1
+            username = f"{BotClass.__name__[0]}_{setting['name']}_{i}"
+            
+            # 实例化并解包特有参数
+            instance = BotClass(
+                username=username,
+                **setting.get("params", {})
+            )
+            bot_army.append(instance)
 
-        {"res_id": 6, "meta": "house_assembly_plant_", "name": "普通房", "w": 5},
-        {"res_id": 10, "meta": "house_assembly_plant_", "name": "别墅", "w": 5},
+    # 3. 统一启动
+    if bot_army:
+        logger.info(f"🚀 经济系统启动：共 {len(bot_army)} 个代理人正在进入市场...")
+        await asyncio.gather(*(bot.run() for bot in bot_army))
+    else:
+        logger.error("❌ 未配置任何机器人")
 
-        {"res_id": 16, "meta": "steel_mill_", "name": "钢铁", "w": 15},
-        {"res_id": 15, "meta": "mine_plant_", "name": "铁矿石", "w": 30},
-    ]
-    total_weight = sum(config['w'] for config in bot_config)
-    for config in bot_config:
-        count = int(total_bots * (config['w'] / total_weight))
-        bot_army.extend([
-            ProducerBot(
-                resource_id=config['res_id'],
-                building_meta_id=config['meta'],
-                username=f"P_{config['name']}_{i}_V2"
-            ) for i in range(count)
-        ])
-
-    # 并发启动所有机器人
-    logger.info(f"🚀 经济系统自动化启动：{len(bot_army)} 个代理人正在进入市场...")
-    await asyncio.gather(*[bot.run() for bot in bot_army])
 
 if __name__ == "__main__":
     logging.basicConfig(

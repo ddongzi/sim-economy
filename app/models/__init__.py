@@ -5,7 +5,7 @@ from enum import IntEnum, StrEnum
 from pydantic import BaseModel
 from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship,text
-from time import time
+import time
 from typing import Optional, List
 # 行业， 建筑物/资源分类
 class Industry(SQLModel, table=True):
@@ -33,11 +33,7 @@ class Player(PlayerBase, table=True):
     experience: int = Field(default=0, nullable=True)
     cash: float = Field(default=0, nullable=True)
     rating: str = Field(default="B", nullable=True)
-
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-
+    created_at: int = Field(default_factory=lambda: int(time.time()))
 
 class PlayerPublic(PlayerBase):
     id:int
@@ -65,7 +61,6 @@ class BuildingMeta(BuildingMetaBase, table=True):
     description: str = Field(default="")
     icon: str = Field(default="bi-box")
     levels: List['BuildingLevelsConfig'] = Relationship(back_populates="building_meta")
-
 
 class BuildingMetaPublic(BuildingMetaBase):
     icon:str
@@ -215,10 +210,10 @@ class BuildingTask(BuildingTaskBase, table=True):
     resource_id: Optional[int] = Field(default=None, foreign_key="resource.id")
     quantity: int = Field(default=0)
     cash_cost: float = Field(default=0)
-    # 时间管理
-    start_time: datetime = Field(default_factory=datetime.utcnow)
+    # 时间管理: 时间戳，
+    start_time: int
     duration: int = Field(nullable=True)  # seconds
-    end_time: datetime = Field()
+    end_time: int
 
     player: Player = Relationship()
     player_building: PlayerBuilding = Relationship()
@@ -226,15 +221,13 @@ class BuildingTask(BuildingTaskBase, table=True):
 
 class BuildingTaskCreate(BuildingTaskBase):
     player_building_id: int
-    start_time: datetime
+    start_time: int
 
 class PlayerBuildingPublic(PlayerBuildingBase):
     id: int
     building_meta: BuildingMetaPublic
     task: BuildingTask | None = None
     level: int
-#
-
 
 # MarketOrder 订单
 class MarketOrderBase(SQLModel):
@@ -250,7 +243,6 @@ class MarketOrder(MarketOrderBase, table=True):
 
     order_type: str = Field() # buy sell
     resource_id: int = Field(default=None, foreign_key="resource.id")
-    quality: int = Field(default=0)
 
     total_quantity:int = Field(default=0)
     filled_quantity:int = Field(default=0) # 已经买/卖的数量
@@ -260,7 +252,7 @@ class MarketOrder(MarketOrderBase, table=True):
     # 0 进行中， 1完成 2撤单了
     status:int = Field(default=0, index=True)
 
-    created_at: datetime = Field()
+    created_at: int
 
     player: Player = Relationship()
     resource: Resource = Relationship()
@@ -271,7 +263,7 @@ class MarketOrderPublic(MarketOrderBase):
     player_id: int
 class MarketOrderCreate(MarketOrderBase):
     quantity:int = Field(ge=1)
-    created_at: str
+    created_at:  int = Field(default_factory=lambda: int(time.time()))
 
 class ExchangeTradeHistory(SQLModel, table=True):
     """ 成交记录：交易额 """
@@ -291,7 +283,7 @@ class ExchangeTradeHistory(SQLModel, table=True):
     # 记录它能极大地优化后续全服 GDP 的统计效率
     total_amount: float = Field()
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: int = Field(default_factory=lambda: int(time.time()))
 
     resource: Resource = Relationship()
     seller: Player = Relationship(
@@ -360,7 +352,7 @@ class TransactionLog(SQLModel, table=True):
     before_balance: float= Field(default=0, description="变动余额")
     change_amount: float = Field(default=0, description="变动金额")
     after_balance: float = Field(default=0, description="变动后余额")
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: int = Field(default_factory=lambda: int(time.time()))
     ref_id: int = Field(default=None, description="关联的交易id，任务id 等")
 
     player: Player = Relationship()
@@ -392,15 +384,15 @@ class SpotContract(SQLModel, table=True):
 
     status: ContractStatus = Field(default=ContractStatus.PENDING)
 
-    created_at: datetime = Field(default_factory=datetime.now)
-    signed_at: datetime = Field(default=None, nullable=True)
-    expires_at: datetime = Field(default=None)
+    created_at: int
+    signed_at: int
+    expires_at: int
 
     note: str = Field(default=None, description="留言")
 
     is_recurring: bool = Field(default=False, description="是否为长期协议：自动化现货", nullable=True)
     frequency: str = Field(default="daily", nullable=True)
-    last_executed_at: datetime = Field(default=None, nullable=True)
+    last_executed_at: int
 class SpotContractBase(SQLModel):
     pass
 
@@ -411,7 +403,7 @@ class SpotContractCreate(SpotContractBase):
     price_per_unit: float
     total_amount: float
     status: ContractStatus = Field(default=ContractStatus.PENDING)
-    expires_at:datetime
+    expires_at:int
     note: str = Field(default="")
 
 class BuildingLevelsConfig(SQLModel, table=True):
@@ -429,7 +421,7 @@ class MarketSnapshot(SQLModel, table=True):
     """ 市场快照：cpi历史 """
     __tablename__ = "market_snapshot"
     id: Optional[int] = Field(default=None, primary_key=True)
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: int
     cpi: float        # 存储当时的 CPI
     m1_total: float = Field(default=0) # 货币供应链
     turnover: float # 存储当时的交易额
@@ -445,7 +437,7 @@ class ResourceSnapshot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     resource_id: int = Field(index=True, foreign_key="resource.id")
     price: float
-    timestamp: datetime = Field(default_factory=datetime.now, index=True)
+    timestamp: int = Field(index=True)
 
 class GovernmentOrder(SQLModel, table=True):
     """
@@ -463,8 +455,8 @@ class GovernmentOrder(SQLModel, table=True):
     description:str = Field(default="")
 
     status: int # 0 active, 1 completed, 2 expired
-    created_at: datetime = Field(default_factory=datetime.now)
-    expires_at: datetime| None =None
+    created_at: int
+    expires_at: int
 
 class GovernmentOrderDelivery(BaseModel):
     order_id: int
@@ -482,8 +474,8 @@ class GovernmentActionLog(SQLModel, table=True):
 
     # 政策核心字段
     is_active: bool = Field(default=False)  # 标记是否为当前生效政策
-    expires_at: Optional[datetime] = None  # 到期时间
-    created_at: datetime = Field(default_factory=datetime.now)
+    expires_at: int  # 到期时间
+    created_at: int
 
 
 class UpdateResourceRecipeRequest(BaseModel):
@@ -503,7 +495,7 @@ class UpdateResourceRecipeRequest(BaseModel):
 class LedgerLogFull(BaseModel):
     # 流水详细话
 
-    time: datetime
+    time: int
     type: int
     type_display: str
     description: str
@@ -518,14 +510,28 @@ class PlayerEconomySnapshot(SQLModel, table = True):
     cash: float = Field(default=0)
     building_valuation: float = Field(default=0)
     warehouse_valuation: float = Field(default=0)
-    snap_time: datetime = Field(default_factory=datetime.now)
-
+    snap_time: int = Field(default_factory=lambda: int(time.time()))
 
 class GameConfig(SQLModel, table=True):
+    """
+    全局数值参数
+    """
     __tablename__ = "game_config"
     id: int = Field(default=None, primary_key=True)
     key: str = Field(unique=True, index=True, max_length=50)
-    value: str
+    value: float
     group:str
     description: Optional[str] = None
 
+class ResourceMarketHistoryItem(BaseModel):
+    """
+    k线图展示
+    """
+    time: int
+    high: float
+    low: float
+    volume: int
+class ResourceMarketHistoryResponse(BaseModel):
+    resource_id: int
+    interval_minutes: int
+    data: List[ResourceMarketHistoryItem] 

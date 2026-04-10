@@ -11,13 +11,13 @@ logger = logging.getLogger("ProducerBot")
 
 # ---------------------------------------------------------
 # 1. 生产型 Bot
-# -
+# 购买原料- 生产- 售出-  再生产。。
 # ---------------------------------------------------------
 class ProducerBot(BaseBot):
 
     def __init__(self, resource_id, building_meta_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.sleep_time = 60 * 3  # 周期检查，
+        self.sleep_time = 60  # 周期检查，
         self.resource_id = resource_id  # 每个bot生产一种资源
         self.building_meta_id = building_meta_id
         self.inventory = {}  # 实时库存缓存
@@ -51,10 +51,12 @@ class ProducerBot(BaseBot):
             final_price = base_price * 1.5
         if final_price < base_price * 0.6:
             final_price = base_price * 0.6
-        return round(final_price, 3)
+        return round(final_price, 2)
 
     async def init_mine(self):
         """ login 之后 初始化"""
+        logger.info(f"ready {self.username} init .")
+
         matches = [
             r for r in self.gameData['recipes']
             if r.get('output_resource_id') == self.resource_id
@@ -70,7 +72,7 @@ class ProducerBot(BaseBot):
         if self.safety_hours < 1:
             self.safety_hours = 1
 
-        logger.info(f"{self.username} init .")
+        logger.info(f"{self.username} init done.")
 
     async def sync_inventory(self):
         """同步服务器背包数据并转换为字典"""
@@ -96,7 +98,7 @@ class ProducerBot(BaseBot):
             "resource_id": resource_id,
             "price_per_unit": price,
             "quantity": qty,
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().timestamp()
         })
         if resp.status_code == 200:
             logger.info(f"{self.username} create buy market succeed. {resource_id}:{qty}@{price}")
@@ -108,12 +110,12 @@ class ProducerBot(BaseBot):
         resp = await self.client.get(f"/api/exchange/simple/{resource_id}")
         simple_price = resp.json()
         price = self.get_float_price(simple_price['market_price'],simple_price['base_price'], behavior='sell')
-        resp = await self.client.post("/api/exchange/order", json={
+        resp = await self.client.post("/api/exchange/order/create", json={
             "order_type": "sell",
             "resource_id": resource_id,
             "price_per_unit": price,
             "quantity": qty,
-            "created_at": datetime.now().isoformat()
+            "created_at": int(datetime.now().timestamp())
         })
         if resp.status_code == 200:
             logger.info(f"{self.username} create sell market succeed. {resource_id}:{qty}@{price}")
@@ -162,7 +164,7 @@ class ProducerBot(BaseBot):
             if resp.status_code == 200:
                 # 有任务在忙
                 task = resp.json()
-                if datetime.fromisoformat(task['end_time']) < datetime.now():
+                if task['end_time'] < datetime.now().timestamp():
                     # 任务需要领取.
                     resp = await self.client.get(f"/api/task/claim/{building_id}")
 
@@ -173,7 +175,7 @@ class ProducerBot(BaseBot):
         # 检查所有原材料是否都满足配方
         total_quantity = sys.maxsize
         if not self.recipe['inputs']:
-            total_quantity = int( self.recipe['per_hour']) * 12  # 电没有input， 默认1小时数量
+            total_quantity = int( self.recipe['per_hour']) # 电没有input， 默认1小时数量
         for input_res in self.recipe['inputs']:
             res_id = input_res['resource_id']
             qty = input_res['quantity']
@@ -190,6 +192,7 @@ class ProducerBot(BaseBot):
             resp = await self.client.get(f"/api/task/{building_id}")
             if resp.status_code == 200:
                 # 有任务
+                logger.info(resp.json())
                 continue
             if resp.status_code == 400:
 
@@ -197,7 +200,7 @@ class ProducerBot(BaseBot):
                     "resource_id": self.resource_id,
                     "quantity": every_quantity,
                     "player_building_id": building_id,
-                    "start_time": datetime.now().isoformat()
+                    "start_time": int(datetime.now().timestamp())
                 })
         logger.info(f"{self.username} try produce done.")
 
@@ -212,6 +215,7 @@ class ProducerBot(BaseBot):
 
     async def try_buildings(self):
         """ 尝试建造12个playerbuilding """
+        logger.info(f'{self} try buildings')
         if self.is_initialized:
             return
         resp = await self.client.get("/api/buildings")
@@ -272,6 +276,6 @@ class ProducerBot(BaseBot):
                 await asyncio.sleep(wait_time)
             finally:
                 # 无论是否报错，都进入下一次轮询前的休眠
-                await asyncio.sleep(self.sleep_time + random.uniform(0, 60))
+                await asyncio.sleep(self.sleep_time + random.uniform(0, 5))
 
 
